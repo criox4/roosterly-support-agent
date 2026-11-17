@@ -246,6 +246,8 @@ def policy(state: State):
         to_human("client_rule:" + ",".join(flags))
     if keywords and action != "handoff":
         to_human("keyword:" + ",".join(keywords))
+    if priority == "P1" and action != "handoff":  # many users blocked / security / legal: a human owns it
+        to_human("p1_always_human")
     if not tri["agreement"] and action != "handoff":
         to_human("samples_disagree:" + "/".join(s["action"] for s in state["samples"]))
     if action == "reply" and not [f for f in tri["faq_ids"] if f in FAQ_SECTIONS]:
