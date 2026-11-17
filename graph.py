@@ -24,12 +24,13 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.types import RetryPolicy
 from pydantic import BaseModel, Field
 
-from safety import redact, rule_hits
+from safety import domains_in, redact, reply_problems, rule_hits
 
 FAQ = (Path(__file__).parent / "faq.md").read_text(encoding="utf-8")
 FAQ_SECTIONS = {m.group(1): m.group(0).strip()
                 for m in re.finditer(r"^## (F\d\d)\b.*?(?=^## |^---)", FAQ, re.M | re.S)}
 CLIENT_RULES = FAQ[FAQ.index("## The client's rules"):]
+ALLOWED_DOMAINS = domains_in(FAQ)  # replies may only name domains the help centre names
 
 SAMPLES = 3            # triage samples; the action must be unanimous to act without a human
 CONFIDENCE_MIN = 0.7   # mean self-reported confidence below this -> handoff
@@ -283,6 +284,7 @@ def verify(state: State):
         problems.append(f"reply in {check['reply_language']}, customer wrote {tri['language']}")
     problems += [f"unsupported: {c}" for c in check["unsupported_claims"]]
     problems += [f"promise: {p}" for p in check["promises"]]
+    problems += reply_problems(state["draft_reply"], ALLOWED_DOMAINS)  # deterministic, not the model's opinion
     if not check["answers_question"]:
         problems.append("does not answer everything asked")
     check["problems"] = problems

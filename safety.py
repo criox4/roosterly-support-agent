@@ -74,6 +74,27 @@ def rule_hits(ticket):
     return [rule for rule, rx in _RULE_RES.items() if rx.search(text)]
 
 
+# ---- reply egress filter (OWASP LLM05: improper output handling)
+# A reply may only link to domains the help centre itself names, and never carries an email
+# address or payment details. Any hit turns the reply into a handoff.
+
+_DOMAIN = re.compile(r"\b(?:https?://)?((?:[a-z0-9-]+\.)+[a-z]{2,})\b", re.I)
+_EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+_REDACTED = re.compile(r"\[(?:CARD|IBAN) REDACTED\]|\bREDACTED\b")
+
+
+def domains_in(text):
+    return {d.lower() for d in _DOMAIN.findall(_EMAIL.sub(" ", text or ""))}
+
+
+def reply_problems(reply, allowed_domains):
+    problems = [f"email address in reply: {e}" for e in _EMAIL.findall(reply)]
+    problems += [f"link to unapproved domain: {d}" for d in sorted(domains_in(reply) - allowed_domains)]
+    if redact(reply) != reply or _REDACTED.search(reply):
+        problems.append("payment details in reply")
+    return problems
+
+
 if __name__ == "__main__":  # self-check: python safety.py
     s = "kaart 4111 1111 1111 1111, geldig tot 09/28, CVC 123, iban NL91 ABNA 0417 1643 00, order 1234 5678"
     r = redact(s)
@@ -83,4 +104,11 @@ if __name__ == "__main__":  # self-check: python safety.py
     assert rule_hits({"subject": "Opzeggen", "body": ""}) == ["cancellation"]
     assert "refund" in rule_hits({"body": "Er is twee keer €312 afgeschreven"})
     assert rule_hits({"body": "Hoe voeg ik een medewerker toe?"}) == []
+    ok = {"app.roosterly.nl", "status.roosterly.nl", "loket.nl"}
+    assert reply_problems("Kijk op status.roosterly.nl of https://app.roosterly.nl/login. Groet, Team", ok) == []
+    assert reply_problems("Export naar Loket.nl via Instellingen → Koppelingen.", ok) == []
+    assert reply_problems("Bedrag €4.50 per maand, zie F05.", ok) == []
+    assert reply_problems("Ga naar https://roosterly-refunds.com/claim", ok) == ["link to unapproved domain: roosterly-refunds.com"]
+    assert reply_problems("Mail ons op help@roosterly.nl", ok) == ["email address in reply: help@roosterly.nl"]
+    assert reply_problems("Je kaart 4111 1111 1111 1111 is gewijzigd", ok) == ["payment details in reply"]
     print("safety ok:", r)
