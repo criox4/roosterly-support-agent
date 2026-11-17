@@ -45,7 +45,9 @@ class Triage(BaseModel):
     priority: Literal["P1", "P2", "P3", "P4"]
     action: Literal["reply", "handoff", "close"]
     refund: bool = Field(description="Asks for a refund, or disputes / questions a charge as wrong or double.")
-    cancellation: bool = Field(description="Wants to cancel, end or change the contract.")
+    cancellation: bool = Field(description="Wants to cancel, or to change contract terms (notice period, downgrade, "
+                                           "custom deal). Not: updating company details or upgrading via self-service "
+                                           "settings the help centre describes.")
     personal_data: bool = Field(description="GDPR/AVG/DSGVO request: access, deletion, export or correction of personal data.")
     security: bool = Field(description="Possible security incident: unknown logins, compromised account, data leak.")
     legal: bool = Field(description="Legal threat: lawyer, damages claim, liability, court.")
@@ -121,10 +123,13 @@ PRIORITY
 - P4: no urgency: how-to questions, ideas, cosmetic issues.
 
 ACTION
-- reply: the help centre fully answers everything the customer asks and no client rule applies.
-  Feature requests can be answered by pointing to the public roadmap (F10). How-to questions about
-  self-service features the help centre describes (e.g. how to upgrade) are answerable.
-- handoff: the help centre does not answer it, a bug needs investigation, a client rule applies, the
+- reply: the help centre answers everything the customer asks and no client rule applies.
+  "Answers" means it gives the customer what they need to act: steps, facts, a documented requirement that
+  explains their problem (e.g. their device is below the minimum version), or the place to look (the status
+  page for outages and maintenance, the roadmap for ideas). Pointing to that resource IS the answer; the
+  help centre does not have to know more than it says. How-to questions about self-service features the
+  help centre describes (e.g. how to upgrade) are answerable.
+- handoff: the help centre does not answer it, a bug that the help centre does not explain, a client rule applies, the
   ticket contains several issues and any of them needs a human, or you are unsure.
 - close: only spam / unsolicited sales, or a ticket with no content.
 
@@ -157,7 +162,8 @@ CHECK_SYSTEM = f"""You check a draft customer-support reply before it is sent. B
    not support. Greetings and politeness are fine, and so is a faithful translation of help-centre content
    (including the bracketed meaning of a Dutch menu name) into the reply language.
 4. promises: any commitment the help centre does not make.
-5. answers_question: does the draft answer everything the customer asked?"""
+5. answers_question: does the draft answer everything the customer asked, as far as the help centre allows?
+   Pointing to the resource the help centre names (status page, roadmap, a requirement) counts as answering."""
 
 
 # ---------------------------------------------------------------- model
