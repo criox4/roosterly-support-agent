@@ -8,7 +8,7 @@ uv run python safety.py && uv run python test_reliability.py   # offline checks
 uv run eval.py --tag mine --runs 3        # eval on the 10 labelled examples, posts nothing
 uv run agent.py --dry-run                 # decide and print, post nothing
 uv run agent.py --reset                   # clean run: reset, then handle all tickets once
-uv run ui.py                              # optional walkthrough + live demo at http://127.0.0.1:8000
+uv run ui.py                              # optional: UI + API in one process, opens http://127.0.0.1:8000
 ```
 Re-running `agent.py` is safe. Logs go to `logs/agent.jsonl` and eval results to `eval/results/`.
 

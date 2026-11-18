@@ -186,6 +186,21 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    server = ThreadingHTTPServer(("127.0.0.1", 8000), Handler)
-    print("Support agent demo UI: http://127.0.0.1:8000  (Ctrl+C to stop)")
-    server.serve_forever()
+    import argparse
+    import webbrowser
+    ap = argparse.ArgumentParser(description="Serve the walkthrough UI and its API (one process).")
+    ap.add_argument("--port", type=int, default=8000)
+    ap.add_argument("--no-browser", action="store_true", help="do not open a browser tab")
+    args = ap.parse_args()
+    try:
+        server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
+    except OSError:
+        sys.exit(f"Port {args.port} is in use (is the UI already running?). Try: uv run ui.py --port {args.port + 1}")
+    url = f"http://127.0.0.1:{args.port}"
+    print(f"Support agent UI + API: {url}  (Ctrl+C to stop)")
+    if not args.no_browser:
+        webbrowser.open(url)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("stopped")
