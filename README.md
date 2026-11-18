@@ -4,6 +4,10 @@ The agent reads every open ticket from the Roosterly helpdesk and posts one deci
 drafted from the help centre (`faq.md`), a handoff to the support team with a note in English, or a close
 for spam and empty tickets.
 
+| Final run (30 tickets) | Eval (10 examples × 3 runs) | Cost |
+|---|---|---|
+| 30 posted once, 0 errors: 12 reply, 16 handoff, 2 close | 0 unsafe, over-escalated 7/30 → 1/30, action 0.97 | about $0.04 per 100 tickets |
+
 ## How to run
 
 You need Python 3.12+ and [uv](https://docs.astral.sh/uv/).
@@ -33,14 +37,18 @@ skipped, and `--only T005 T007` handles specific tickets. Every run writes one l
    apply), and plain Python makes the decision from them. LangGraph gives a checkpoint after every step and
    retries on the model calls. LangChain is only the model client (`ChatOpenRouter` with structured output).
 2. **Code can only move a ticket towards a human.** After triage, a policy step in plain code checks the
-   model's answer. A ticket goes to a human when any of the three triage samples flags a client rule (refund
-   or disputed charge, cancellation or contract change, GDPR/AVG request, security incident, legal threat,
-   churn threat), when a Dutch, English or German keyword for one of those rules matches, when the ticket is
-   P1, when the samples disagree on the action, when a reply would cite no FAQ section, or when confidence is
-   below 0.7. A rule hit also raises the priority to at least P2. I measure "unsure" by asking the same triage
-   question three times at temperature 0.8; if the answers disagree on the action, a human gets the ticket.
-   Ticket text is wrapped in tags and treated as data, and the draft only sees the FAQ sections the triage
-   cited, so the injection attempts in T007 and T030 changed nothing.
+   model's answer against the guardrails below. I measure "unsure" by asking the same triage question three
+   times at temperature 0.8; if the answers disagree on the action, a human gets the ticket. Ticket text is
+   wrapped in tags and treated as data, and the draft only sees the FAQ sections the triage cited, so the
+   injection attempts in T007 and T030 changed nothing.
+
+   | When | Then |
+   |---|---|
+   | Any triage sample flags a client rule: refund or disputed charge, cancellation or contract change, GDPR/AVG request, security incident, legal threat, churn threat | handoff, at least P2 |
+   | A Dutch, English or German keyword for one of those rules matches | handoff, at least P2 |
+   | The ticket is P1, the samples disagree, no FAQ section is cited, or confidence is below 0.7 | handoff |
+   | The reply check fails (see 3) | handoff |
+   | The ticket is empty | close, no model call |
 3. **Dutch is handled directly and checked in English.** The model reads and writes Dutch itself.
    Translating every ticket first would add a model call per ticket and lose the tone and the Dutch menu
    names customers see in the app. To check a reply without reading Dutch, a second model call
@@ -59,22 +67,20 @@ escalation policy, and I reviewed the dry-run decisions before the final run.
 
 ## Reliability
 
-- 429: the client throttles itself to 4 calls a second, under the limit of 5. If a 429 still comes back, it
-  waits the `Retry-After` seconds and tries again.
-- 503 and network errors are retried with exponential backoff plus jitter, up to 8 tries. Other 4xx errors
-  (400, 401, 404, 422) mean the request itself is wrong, so they are not retried.
-- 409, and never answering twice: before every POST the agent fetches the ticket again and skips it if it is
-  already handled. If a POST was saved but its response got lost, the retry gets a 409, which counts as done.
-  Two agents running at once against the same tickets gave zero double answers.
-- Crash: each ticket is a LangGraph thread checkpointed in `checkpoints.db`, and the next run continues at
-  the step where it stopped (tested with `kill -9`). A failed model call leaves that ticket open while the
-  run carries on with the others. In the final run, T001 to T005 resumed from an earlier attempt that had
-  failed on an expired API key.
-- Security: keys come only from environment variables in `.env`, which is git-ignored. Card numbers
-  (Luhn-checked), IBANs (mod-97), CVCs and expiry dates are redacted before ticket text enters the graph, so
-  the model, the checkpoints and the logs never see them, and everything posted is redacted again.
-  `test_reliability.py` tests the error handling offline with scripted responses, and `safety.py` has a
-  self-check for the redaction and keyword rules.
+| Situation | What the agent does |
+|---|---|
+| 429 rate limit | Throttles itself to 4 calls a second, under the limit of 5; after a 429 it waits `Retry-After` and retries |
+| 503 or network error | Retries with exponential backoff plus jitter, up to 8 tries |
+| Other 4xx (400, 401, 404, 422) | No retry: the request itself is wrong, so the error is logged and the ticket stays open |
+| 409, or a ticket already handled | Fetches the ticket again before every POST and skips it if handled; a 409 on a retry counts as done. Two agents running at once gave zero double answers |
+| Crash | Each ticket is a LangGraph thread in `checkpoints.db`; the next run continues at the step where it stopped (tested with `kill -9`). In the final run, T001 to T005 resumed after an earlier attempt failed on an expired API key |
+| Failed model call | That ticket stays open and the run carries on with the others |
+
+Keys come only from environment variables in `.env`, which is git-ignored. Card numbers (Luhn-checked), IBANs
+(mod-97), CVCs and expiry dates are redacted before ticket text enters the graph, so the model, the
+checkpoints and the logs never see them, and everything posted is redacted again. `test_reliability.py` tests
+the error handling offline with scripted responses, and `safety.py` has a self-check for the redaction and
+keyword rules.
 
 ## Eval and fix
 
