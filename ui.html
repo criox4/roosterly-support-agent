@@ -4,44 +4,65 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Roosterly Support Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;600;700&family=Public+Sans:wght@400;600;700&display=swap">
 <style>
+  /* Theme: shadcn preset b2h47HD7kv ("base-sera", mist), tokens copied from `shadcn init -p b2h47HD7kv` */
   :root {
-    --bg: #f6f7f9; --panel: #fff; --text: #1b1f24; --muted: #667085; --line: #e4e7ec;
-    --accent: #3b5bdb; --reply: #2b8a3e; --handoff: #c2410c; --close: #667085; --warn: #b42318;
-    --chip: #eef1f6; --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+    --background: oklch(1 0 0); --foreground: oklch(0.148 0.004 228.8);
+    --card: oklch(1 0 0); --primary: oklch(0.218 0.008 223.9); --primary-foreground: oklch(0.987 0.002 197.1);
+    --muted: oklch(0.963 0.002 197.1); --muted-foreground: oklch(0.56 0.021 213.5);
+    --border: oklch(0.925 0.005 214.3); --ring: oklch(0.723 0.014 214.4); --sidebar: oklch(0.987 0.002 197.1);
+    --destructive: oklch(0.577 0.245 27.325); --radius: 0.625rem;
+    --reply: oklch(0.52 0.13 150); --handoff: oklch(0.6 0.16 50); --close: var(--muted-foreground);
+    --font-serif: "Noto Serif", serif; --font-heading: "Public Sans", sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+    /* aliases used below */
+    --bg: var(--background); --panel: var(--card); --text: var(--foreground); --line: var(--border);
+    --accent: var(--primary); --chip: var(--muted); --warn: var(--destructive);
   }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #0f1115; --panel: #171a21; --text: #e6e8eb; --muted: #98a2b3; --line: #2a2f3a;
-            --accent: #7c95ff; --reply: #51cf66; --handoff: #ff922b; --close: #98a2b3; --warn: #ff6b6b; --chip: #222733; }
+    :root {
+      --background: oklch(0.148 0.004 228.8); --foreground: oklch(0.987 0.002 197.1);
+      --card: oklch(0.218 0.008 223.9); --primary: oklch(0.925 0.005 214.3); --primary-foreground: oklch(0.218 0.008 223.9);
+      --muted: oklch(0.275 0.011 216.9); --muted-foreground: oklch(0.723 0.014 214.4);
+      --border: oklch(1 0 0 / 10%); --ring: oklch(0.56 0.021 213.5); --sidebar: oklch(0.218 0.008 223.9);
+      --destructive: oklch(0.704 0.191 22.216);
+      --reply: oklch(0.72 0.15 150); --handoff: oklch(0.75 0.15 55);
+    }
   }
   * { box-sizing: border-box; }
-  body { margin: 0; font: 14px/1.5 system-ui, -apple-system, Segoe UI, sans-serif; background: var(--bg); color: var(--text); }
+  body { margin: 0; font: 14px/1.6 var(--font-serif); background: var(--bg); color: var(--text); }
+  h1, h2, .tabs button, .badge, .chip, button.act, label, th, .item .top, .stat { font-family: var(--font-heading); }
   header { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel); }
   header h1 { font-size: 16px; margin: 0; }
-  .stat { color: var(--muted); font-size: 13px; }
+  .stat { color: var(--muted-foreground); font-size: 13px; }
   .stat b { color: var(--text); }
   main { display: grid; grid-template-columns: 340px 1fr; height: calc(100vh - 53px); }
   @media (max-width: 860px) { main { grid-template-columns: 1fr; height: auto; } }
-  aside { border-right: 1px solid var(--line); overflow: auto; background: var(--panel); }
-  .tabs { display: flex; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); }
-  .tabs button { flex: 1; padding: 10px; border: 0; background: none; color: var(--muted); cursor: pointer; font: inherit; border-bottom: 2px solid transparent; }
+  aside { border-right: 1px solid var(--line); overflow: auto; background: var(--sidebar); }
+  .tabs { display: flex; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--sidebar); }
+  .tabs button { flex: 1; padding: 12px 6px; border: 0; background: none; color: var(--muted-foreground); cursor: pointer; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; border-bottom: 2px solid transparent; }
   .tabs button.on { color: var(--text); border-bottom-color: var(--accent); }
   .item { padding: 10px 14px; border-bottom: 1px solid var(--line); cursor: pointer; }
   .item:hover, .item.on { background: var(--chip); }
-  .item .top { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); }
+  .item .top { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted-foreground); }
   .item .subj { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   section { overflow: auto; padding: 20px; }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 14px; }
-  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 10px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; margin-bottom: 14px; }
+  .card h2 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--muted-foreground); margin: 0 0 10px; }
   .body { white-space: pre-wrap; }
   .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  .chip { background: var(--chip); border-radius: 999px; padding: 2px 10px; font-size: 12px; }
-  .badge { border-radius: 6px; padding: 3px 10px; font-weight: 700; color: #fff; text-transform: uppercase; font-size: 12px; }
+  .chip { background: var(--chip); border-radius: calc(var(--radius) * 0.6); padding: 2px 10px; font-size: 12px; }
+  .badge { border-radius: 0; padding: 4px 12px; font-weight: 600; letter-spacing: .1em; color: var(--primary-foreground); text-transform: uppercase; font-size: 11px; }
   .reply { background: var(--reply); } .handoff { background: var(--handoff); } .close { background: var(--close); }
   .warn { color: var(--warn); }
-  .muted { color: var(--muted); }
-  button.act { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text); cursor: pointer; font: inherit; }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .muted { color: var(--muted-foreground); }
+  button.act { height: 40px; padding: 0 24px; border-radius: 0; border: 1px solid var(--line); background: transparent; color: var(--text); cursor: pointer; font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
+  button.act:hover { background: var(--muted); }
+  button.act:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+  button.primary { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
+  button.primary:hover { background: color-mix(in oklch, var(--primary) 80%, transparent); }
   button:disabled { opacity: .5; cursor: wait; }
   .path { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-family: var(--mono); font-size: 12px; }
   .path span.node { background: var(--chip); padding: 3px 8px; border-radius: 6px; }
@@ -49,9 +70,10 @@
   @media (max-width: 1100px) { .grid2 { grid-template-columns: 1fr; } }
   table { border-collapse: collapse; width: 100%; font-size: 13px; }
   td, th { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); }
-  input, textarea, select { width: 100%; font: inherit; padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+  input, textarea, select { width: 100%; font: inherit; padding: 8px 10px; border-radius: 0; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+  input:focus, textarea:focus, select:focus { outline: 2px solid var(--ring); outline-offset: -1px; }
   textarea { min-height: 120px; }
-  label { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 4px; }
+  label { display: block; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted-foreground); margin: 10px 0 4px; }
   .label-cmp td:last-child { font-weight: 600; }
   .ok { color: var(--reply); } .miss { color: var(--warn); }
 </style>
@@ -95,6 +117,8 @@ const api = async (path, body) => {
 const card = (title, ...kids) => $("div", { cls: "card" }, $("h2", {}, title), ...kids);
 
 let tab = "tickets", cache = {}, selected = null;
+// the ticket list returns handled as "reply", a single ticket as {action, at}
+const handledAction = h => (typeof h === "string" ? h : h && h.action);
 
 async function loadStatus() {
   try {
@@ -117,7 +141,7 @@ async function showTab(name) {
   } catch (err) { list.replaceChildren($("p", { cls: "warn", style: "padding:14px" }, err.message)); return; }
   list.replaceChildren(...cache[name].map(t => $("div", { cls: "item", on: { click: () => select(t) } },
     $("div", { cls: "top" }, $("span", {}, `${t.id} · ${t.channel} · ${t.customer_plan}`),
-      $("span", {}, t.label ? t.label.action : (t.handled ? `handled: ${t.handled.action}` : "open"))),
+      $("span", {}, t.label ? t.label.action : (t.handled ? `handled: ${handledAction(t.handled)}` : "open"))),
     $("div", { cls: "subj" }, t.subject || "(no subject)"))));
 }
 
@@ -125,7 +149,7 @@ function ticketCard(t) {
   return card(`${t.id} · ${t.channel} · plan ${t.customer_plan}`,
     $("div", { style: "font-weight:600;margin-bottom:6px" }, t.subject || "(no subject)"),
     $("div", { cls: "body" }, t.body || "(empty body)"),
-    t.handled ? $("p", { cls: "muted" }, `Already handled in the helpdesk: ${t.handled.action} at ${t.handled.at}`) : null);
+    t.handled ? $("p", { cls: "muted" }, `Already handled in the helpdesk: ${handledAction(t.handled)}`) : null);
 }
 
 function select(t) {
