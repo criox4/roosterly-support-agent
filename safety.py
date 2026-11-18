@@ -40,8 +40,15 @@ def redact(text):
         digits = re.sub(r"\D", "", m.group())
         return "[CARD REDACTED]" if 13 <= len(digits) <= 19 and luhn_ok(digits) else m.group()
 
+    def iban(m):  # the match can run into the next word ("... 1643 00 zie"): take the longest valid IBAN in it
+        s = m.group()
+        for end in range(len(s), 14, -1):
+            if (end == len(s) or s[end] == " ") and iban_ok(s[:end]):
+                return "[IBAN REDACTED]" + s[end:]
+        return s
+
     text = _CARD_CANDIDATE.sub(card, text)
-    text = _IBAN_CANDIDATE.sub(lambda m: "[IBAN REDACTED]" if iban_ok(m.group()) else m.group(), text)
+    text = _IBAN_CANDIDATE.sub(iban, text)
     text = _CVC.sub(r"\1 [REDACTED]", text)
     return _EXPIRY.sub(r"\1 [REDACTED]", text)
 
@@ -100,6 +107,7 @@ if __name__ == "__main__":  # self-check: python safety.py
     r = redact(s)
     assert "4111" not in r and "0417" not in r and "CVC 123" not in r and "09/28" not in r, r
     assert "1234 5678" in r  # not a card: too short
+    assert redact("IBAN NL91 ABNA 0417 1643 00 zie bijlage") == "IBAN [IBAN REDACTED] zie bijlage"
     assert redact("bel 0612345678") == "bel 0612345678"  # phone number survives
     assert rule_hits({"subject": "Opzeggen", "body": ""}) == ["cancellation"]
     assert "refund" in rule_hits({"body": "Er is twee keer €312 afgeschreven"})
