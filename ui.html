@@ -275,8 +275,7 @@ async function lightUp(flowEl, ran) {
 const CHAPTERS = [
   { title: "The problem", render: chProblem },
   { title: "How it works", render: chPipeline },
-  { title: "Safety", render: chSafety },
-  { title: "Guardrails", render: chGuardrails },
+  { title: "Safety and guardrails", render: chGuardrails },
   { title: "Dutch", render: chDutch },
   { title: "Reliability", render: chReliability },
   { title: "Evals", render: chEvals },
@@ -342,7 +341,7 @@ function chPipeline() {
     card("Click a step", diagram), detail];
 }
 
-function chSafety() {
+function safetyTools() {  // the try-it box and the keyword lists, shown under the guardrail cards
   const rules = $("div");
   later(rules, get("/api/config"), c => $("table", {},
     $("tr", {}, $("th", {}, "client rule"), $("th", {}, "keywords in code (nl / en / de)")),
@@ -359,19 +358,7 @@ function chSafety() {
         card("3 · If this were a reply", r.reply_problems.length ? $("ul", {}, r.reply_problems.map(p => $("li", { cls: "warn" }, p))) : $("p", { cls: "ok" }, "passes the egress filter"))));
     } catch (e) { out.replaceChildren(fail(e)); }
   };
-  return [...head("Chapter 3", "Safety is code, and it only moves tickets towards a human",
-    "The client's rules are enforced twice: the model flags them, and a deterministic keyword list catches what it misses. Either one is enough."),
-    $("div", { cls: "callout", style: "margin-bottom:16px" }, "Every check that can overrule the model, and how often each one fired, is in the next chapter: Guardrails."),
-    $("div", { cls: "grid2", style: "margin-bottom:16px" },
-      card("Prompt injection", $("ul", {},
-        $("li", {}, "Ticket text is wrapped in ", $("code", {}, "<ticket>"), " tags and marked as data; any ", $("code", {}, "< >"), " in it is neutralised."),
-        $("li", {}, "The model can only answer in a fixed JSON schema: no tools, no free actions."),
-        $("li", {}, "The draft only sees the FAQ sections that were cited, and code decides the action."),
-        $("li", {}, "Example T030 asks to set its own priority and promise a discount: flagged, ignored, answered from F07."))),
-      card("Payment details", $("ul", {},
-        $("li", {}, "Redacted before the graph: the model, checkpoints and logs never see them."),
-        $("li", {}, "Luhn and mod-97 checks, so phone numbers and order numbers survive."),
-        $("li", {}, "Redacted again on everything posted, and the reply filter blocks any that slip through.")))),
+  return [
     card("Try it: the deterministic layer, no model involved", input, $("div", { cls: "row", style: "margin:12px 0" }, $("button", { cls: "primary", on: { click: test } }, "Run the safety layer")), out),
     card("The keyword lists, read live from safety.py", rules)];
 }
@@ -379,10 +366,10 @@ function chSafety() {
 const GUARDS = [
   { stage: "Before the model", name: "Payment details redacted", code: "redact", always: true,
     trigger: "Card numbers (Luhn-checked), IBANs (mod-97), CVCs and expiry dates in the subject or body.",
-    effect: "Replaced before the model, the checkpoints and the logs see the ticket, and again on everything posted." },
+    effect: "Replaced before the model, the checkpoints and the logs see the ticket, and again on everything posted. The checksums mean phone and order numbers survive." },
   { stage: "Before the model", name: "Ticket text is data", code: "UNTRUSTED", always: true,
     trigger: "Every ticket.",
-    effect: "Wrapped in <ticket> tags with < > neutralised; the prompt says never to follow it; the model flags injection attempts." },
+    effect: "Wrapped in <ticket> tags with < > neutralised, and the prompt says never to follow it. The model can only answer in a fixed JSON schema (no tools), the draft sees only the cited FAQ sections, and code decides the action. T030 tried to set its own priority and promise a discount: flagged, ignored, answered from F07." },
   { stage: "Before the model", name: "Empty ticket", code: "prepare", tag: "empty_ticket", match: o => o === "empty_ticket",
     trigger: "No subject and no body.", effect: "Closed as P4 without a model call." },
   { stage: "After triage", name: "Client rule flagged", code: "policy", tag: "client_rule:…", match: o => o.startsWith("client_rule:"),
@@ -423,10 +410,11 @@ function chGuardrails() {
         tile(ev ? ev.summary.unsafe : "–", "unsafe decisions in the final eval")),
       ...stages.map(stage => $("div", { style: "margin-bottom:22px" },
         $("div", { cls: "kicker", style: "margin:0 0 10px" }, stage),
-        $("div", { cls: "grid2" }, GUARDS.filter(g => g.stage === stage).map(g => guardCard(g, decided, ev, cfg)))))];
+        $("div", { cls: "grid2" }, GUARDS.filter(g => g.stage === stage).map(g => guardCard(g, decided, ev, cfg))))),
+      ...safetyTools()];
   });
-  return [...head(null, "Every check that can overrule the model",
-    "The model proposes a decision; these checks in plain code have the last word. They can only move a ticket towards a human, or close an empty one. A count goes up only when a check changed the decision: when the model already chose a handoff, the rules agreed and nothing was overruled. Counts are read live from logs/agent.jsonl and eval/results/final.json."),
+  return [...head(null, "Safety is code, and it only moves tickets towards a human",
+    "The model proposes a decision; these checks in plain code have the last word. The client's rules are enforced twice: the model flags them and a keyword list catches what it misses. A count goes up only when a check changed the decision: when the model already chose a handoff, the rules agreed and nothing was overruled. Counts are read live from logs/agent.jsonl and eval/results/final.json."),
     body];
 }
 
