@@ -628,11 +628,11 @@ function chRun() {
     runner,
     card("Latest decision per ticket (logs/agent.jsonl)", log),
     card("What I would do next", $("ul", {},
-      $("li", {}, $("b", {}, "Human-approved drafts first "), "(a LangGraph interrupt before post), then auto-send per category, with a kill switch."),
-      $("li", {}, $("b", {}, "Keep data in the EU "), "as FAQ F09 promises: an EU endpoint with zero retention, a DPIA, log retention."),
-      $("li", {}, $("b", {}, "An AI disclosure in replies "), "(EU AI Act art. 50)."),
-      $("li", {}, $("b", {}, "~100 tickets labelled by the support team "), "plus a red-team set, with the eval in CI. Priority is the weakest field."),
-      $("li", {}, $("b", {}, "Rule change: "), "define 'contract changes'. Read literally it includes upgrading, which F05 tells customers to do themselves.")))];
+      $("li", {}, "Start with drafts that a person approves before they are sent (a LangGraph interrupt before post). Then allow auto-send one category at a time, with a kill switch."),
+      $("li", {}, "Keep customer data in the EU, as FAQ F09 promises: an EU endpoint with zero data retention, a DPIA and limits on how long logs are kept."),
+      $("li", {}, "Tell customers when a reply was written by AI, as article 50 of the EU AI Act requires."),
+      $("li", {}, "Have the support team label about 100 real tickets, add a set of adversarial tickets, and run the eval in CI. Priority is the field the agent gets wrong most often."),
+      $("li", {}, "Change one client rule: define what counts as a contract change. Read literally, it includes upgrading, which F05 tells customers to do themselves.")))];
 }
 
 // one logged decision, in full (all text inserted as text nodes)
