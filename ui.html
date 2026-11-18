@@ -145,6 +145,11 @@
   .cmd .what { color: var(--muted-foreground); font-size: 13px; min-width: 0; }
   .spin { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: s 0.8s linear infinite; vertical-align: -1px; margin-right: 8px; }
   @keyframes s { to { transform: rotate(360deg); } }
+  dialog { width: min(860px, calc(100vw - 32px)); max-height: calc(100vh - 64px); padding: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); color: var(--text); }
+  dialog::backdrop { background: oklch(0 0 0 / 55%); }
+  dialog .dhead { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); }
+  dialog .dbody { padding: 18px 20px; }
+  dialog .dbody .card { margin-bottom: 12px; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 </head>
@@ -174,7 +179,7 @@ const $ = (tag, attrs = {}, ...kids) => {
   return el;
 };
 const api = async (path, body) => {
-  const r = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {});
+  const r = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : { cache: "no-store" });
   const data = await r.json();
   if (!r.ok || data.error) throw new Error(data.error || r.statusText);
   return data;
@@ -598,15 +603,17 @@ function chRun() {
     $("button", { cls: "small", on: { click: e => navigator.clipboard.writeText(c).then(() => { e.target.textContent = "copied"; setTimeout(() => e.target.textContent = "copy", 1200); }) } }, "copy"));
   const log = $("div");
   const fillLog = () => later(log, get("/api/log"), logView);
-  const runner = runPanel(() => { ["/api/log", "/api/tickets", "/api/status"].forEach(k => delete memo[k]); fillLog(); loadStatus(); });
+  const refreshLog = () => { delete memo["/api/log"]; get("/api/log").then(l => log.replaceChildren(...logView(l))).catch(() => {}); };
+  const runner = runPanel(() => { ["/api/tickets", "/api/status"].forEach(k => delete memo[k]); refreshLog(); loadStatus(); }, refreshLog);
   const logView = l => {
     const counts = {};
     l.tickets.forEach(t => counts[t.action] = (counts[t.action] || 0) + 1);
     return [$("div", { cls: "row", style: "margin-bottom:12px" }, Object.entries(counts).map(([a, n]) => [badge(a), $("span", { style: "margin-right:12px" }, ` ${n}`)]),
         $("span", { cls: "muted" }, `${l.lines} log lines over ${l.runs.length} run(s), $${l.runs.reduce((s, r) => s + r.cost, 0).toFixed(4)} total`)),
-      $("table", {}, $("tr", {}, $("th", {}, "ticket"), $("th", {}, "action"), $("th", {}, "lang"), $("th", {}, "category"), $("th", {}, "prio"), $("th", {}, "outcome"), $("th", {}, "guardrails")),
+      $("table", {}, $("tr", {}, $("th", {}, "ticket"), $("th", {}, "action"), $("th", {}, "lang"), $("th", {}, "category"), $("th", {}, "prio"), $("th", {}, "status"), $("th", {}, "guardrails"), $("th", {}, "outcome")),
         l.tickets.map(t => $("tr", {}, $("td", {}, $("b", {}, t.ticket)), $("td", {}, t.action ? badge(t.action) : "–"), $("td", {}, t.language || "–"), $("td", {}, t.category || "–"),
-          $("td", {}, t.priority || "–"), $("td", { cls: t.outcome === "error" ? "warn" : "" }, t.outcome), $("td", { cls: "mono", style: "font-size:11.5px" }, (t.overrides || []).join(", ") || "–"))))];
+          $("td", {}, t.priority || "–"), $("td", { cls: t.outcome === "error" ? "warn" : "" }, t.outcome), $("td", { cls: "mono", style: "font-size:11.5px" }, (t.overrides || []).join(", ") || "–"),
+          $("td", {}, $("button", { cls: "small", on: { click: () => outcomeModal(t) } }, "View")))))];
   };
   fillLog();
   return [...head("Chapter 8", "Run it yourself",
@@ -628,8 +635,34 @@ function chRun() {
       $("li", {}, $("b", {}, "Rule change: "), "define 'contract changes'. Read literally it includes upgrading, which F05 tells customers to do themselves.")))];
 }
 
+// one logged decision, in full (all text inserted as text nodes)
+function outcomeModal(t) {
+  const d = $("dialog");
+  const close = () => { d.close(); d.remove(); };
+  d.addEventListener("click", e => { if (e.target === d) close(); });  // click on the backdrop
+  d.addEventListener("close", () => d.remove());
+  const chips = [t.language && `language ${t.language}`, t.category && `category ${t.category}`, t.priority && `priority ${t.priority}`,
+    t.confidence != null && `confidence ${t.confidence}`, t.faq && t.faq.length && `FAQ ${t.faq.join(", ")}`,
+    t.cost_usd != null && `$${t.cost_usd.toFixed(5)}`, t.secs != null && `${t.secs}s`, t.resumed && "resumed from checkpoint"].filter(Boolean);
+  d.append($("div", { cls: "dhead" }, $("div", { cls: "row" }, $("b", {}, t.ticket), t.action ? badge(t.action) : null, $("span", { cls: "chip" }, t.outcome)),
+      $("button", { cls: "small", on: { click: close } }, "Close")),
+    $("div", { cls: "dbody" },
+      t.error ? card("Error", $("p", { cls: "warn" }, t.error), $("p", { cls: "muted" }, "Nothing was posted; the ticket stays open for the next run.")) : null,
+      chips.length ? $("div", { cls: "row", style: "margin-bottom:12px" }, chips.map(c => $("span", { cls: "chip" }, c))) : null,
+      t.reason ? card("Reason", $("p", {}, t.reason)) : null,
+      t.reply ? $("div", { cls: "grid2", style: "margin-bottom:12px" }, card(`Reply sent (${t.language})`, $("div", { cls: "body" }, t.reply)),
+        card("English back-translation", $("div", { cls: "body" }, t.reply_en || "–"))) : null,
+      t.handoff_note ? card("Handoff note for the support team", $("div", { cls: "body" }, t.handoff_note)) : null,
+      card("How it was decided", $("table", {},
+        $("tr", {}, $("td", {}, "triage samples"), $("td", {}, (t.sample_actions || []).join(" / ") || "none (decided by code)")),
+        $("tr", {}, $("td", {}, "guardrails"), $("td", { cls: "mono" }, (t.overrides || []).join(", ") || "none fired")),
+        $("tr", {}, $("td", {}, "run"), $("td", { cls: "mono" }, `${t.run} · ${t.ts}`))))));
+  document.body.append(d);
+  d.showModal();
+}
+
 // "Run all": starts agent.py on the server and follows its output
-function runPanel(onDone) {
+function runPanel(onDone, onProgress) {
   const out = $("pre", { style: "margin-top:14px;max-height:360px", hidden: "" });
   const bar = $("div", { cls: "fill", style: "width:0%" }), progress = $("div", { cls: "bar final", style: "grid-template-columns:1fr 90px;margin-top:14px", hidden: "" },
     $("div", { cls: "track" }, bar), $("span", { cls: "v" }));
@@ -640,7 +673,7 @@ function runPanel(onDone) {
     ["reset", "Reset & run all 30", "the final run: POST /practice/reset, then decide and post all 30 once", "Reset the practice set and post decisions for all 30 tickets? This becomes the run Nordavo scores."],
   ];
   const buttons = modes.map(([m, label, , ask]) => $("button", { cls: m === "reset" ? "primary" : "", on: { click: () => start(m, ask) } }, label));
-  let timer = null;
+  let timer = null, lastDone = -1, watching = false;
   function show(r) {
     const head = r.lines.find(l => / open of \d+ tickets/.test(l));
     const total = head ? +head.match(/: (\d+) open/)[1] : 0;
@@ -651,24 +684,30 @@ function runPanel(onDone) {
     bar.style.width = total ? `${done / total * 100}%` : "0%";
     progress.lastChild.textContent = total ? `${done} / ${total}` : "";
     buttons.forEach(b => b.disabled = r.running);
-    state.replaceChildren(r.running ? [$("span", { cls: "spin" }), `Running (${r.mode})…`]
-      : r.exit == null ? "" : $("span", { cls: r.exit === 0 ? "ok" : "warn" }, r.exit === 0 ? `Finished (${r.mode}), no errors.` : `Finished with errors (exit ${r.exit}). Failed tickets stay open; run again to retry them.`));
+    state.replaceChildren(...(r.running ? [$("span", { cls: "spin" }), `Running (${r.mode})… ${done}${total ? ` of ${total}` : ""} tickets done`]
+      : r.exit == null ? [] : [$("span", { cls: r.exit === 0 ? "ok" : "warn" }, r.exit === 0 ? `Finished (${r.mode}), no errors.` : `Finished with errors (exit ${r.exit}). Failed tickets stay open; run again to retry them.`)]));
+    return done;
   }
   async function poll() {
+    if (!document.body.contains(out)) { clearInterval(timer); timer = null; return; }  // left the chapter
     try {
       const r = await api("/api/run");
-      show(r);
-      clearTimeout(timer);
-      if (r.running) timer = setTimeout(() => document.body.contains(out) && poll(), 1000);
-      else if (r.exit != null && out.dataset.watching) { delete out.dataset.watching; onDone(); }
+      const done = show(r);
+      if (r.running) watching = true;
+      if (done !== lastDone && r.mode !== "dry") { lastDone = done; onProgress(); }  // log table follows the run
+      if (!r.running) {
+        clearInterval(timer); timer = null;
+        if (watching) { watching = false; onDone(); }
+      }
     } catch (e) { state.replaceChildren(fail(e)); }
   }
+  const follow = () => { if (!timer) timer = setInterval(poll, 1000); poll(); };
   async function start(mode, ask) {
     if (ask && !confirm(ask)) return;
-    try { show(await api("/api/run", { mode })); out.dataset.watching = "1"; poll(); }
+    try { show(await api("/api/run", { mode })); watching = true; lastDone = -1; follow(); }
     catch (e) { state.replaceChildren(fail(e)); }
   }
-  api("/api/run").then(r => { if (r.running) out.dataset.watching = "1"; poll(); }).catch(() => {});
+  setTimeout(follow, 0);  // once the panel is on the page: pick up a run already in progress (e.g. after a refresh)
   return card("Run all tickets from here",
     $("p", { cls: "muted" }, "Runs ", $("code", {}, "agent.py"), " on the server, exactly like the command line, and streams its output. Same safeguards: a ticket that is already handled is never posted again."),
     $("div", { cls: "row" }, buttons),
