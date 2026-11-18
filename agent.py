@@ -48,15 +48,28 @@ def thread_for(ticket, tickets):
     return [t for t in tickets if t["id"] != ticket["id"] and (t.get("subject") or "").strip().lower() == subject]
 
 
+def execute(app, inp, config=None):
+    """Run the graph, returning (final state, names of the nodes that ran, in order)."""
+    state, nodes = {}, []
+    for mode, data in app.stream(inp, config, stream_mode=["updates", "values"]):
+        if mode == "updates":
+            nodes += list(data)
+        else:
+            state = data
+    return state, nodes
+
+
 def run_ticket(app, saver, ticket, thread):
-    """Run (or resume) one ticket's thread and return the final state."""
+    """Run (or resume) one ticket's thread. Returns (final state, resumed?, nodes run)."""
     config = {"configurable": {"thread_id": ticket["id"]}}
     snapshot = app.get_state(config)
     if snapshot.next:  # unfinished from a crashed run: continue where it stopped
-        return app.invoke(None, config), True
+        state, nodes = execute(app, None, config)
+        return state, True, nodes
     if snapshot.values:  # finished earlier, but the helpdesk says it is open again (practice reset)
         saver.delete_thread(ticket["id"])
-    return app.invoke({"ticket": ticket, "thread": thread}, config), False
+    state, nodes = execute(app, {"ticket": ticket, "thread": thread}, config)
+    return state, False, nodes
 
 
 def log_record(run_id, state, outcome, secs, resumed):
@@ -103,7 +116,7 @@ def main():
         for t in todo:
             started = time.monotonic()
             try:
-                state, resumed = run_ticket(app, saver, t, thread_for(t, tickets))
+                state, resumed, _ = run_ticket(app, saver, t, thread_for(t, tickets))
             except Exception as e:  # one bad ticket must not stop the run; it stays open for the next one
                 errors += 1
                 msg = redact(f"{type(e).__name__}: {e}")[:300]
