@@ -597,7 +597,9 @@ function chRun() {
   const cmd = (c, what) => $("div", { cls: "cmd" }, $("div", { style: "flex:1;min-width:0" }, $("code", {}, c), $("div", { cls: "what" }, what)),
     $("button", { cls: "small", on: { click: e => navigator.clipboard.writeText(c).then(() => { e.target.textContent = "copied"; setTimeout(() => e.target.textContent = "copy", 1200); }) } }, "copy"));
   const log = $("div");
-  later(log, get("/api/log"), l => {
+  const fillLog = () => later(log, get("/api/log"), logView);
+  const runner = runPanel(() => { ["/api/log", "/api/tickets", "/api/status"].forEach(k => delete memo[k]); fillLog(); loadStatus(); });
+  const logView = l => {
     const counts = {};
     l.tickets.forEach(t => counts[t.action] = (counts[t.action] || 0) + 1);
     return [$("div", { cls: "row", style: "margin-bottom:12px" }, Object.entries(counts).map(([a, n]) => [badge(a), $("span", { style: "margin-right:12px" }, ` ${n}`)]),
@@ -605,7 +607,8 @@ function chRun() {
       $("table", {}, $("tr", {}, $("th", {}, "ticket"), $("th", {}, "action"), $("th", {}, "lang"), $("th", {}, "category"), $("th", {}, "prio"), $("th", {}, "outcome"), $("th", {}, "guardrails")),
         l.tickets.map(t => $("tr", {}, $("td", {}, $("b", {}, t.ticket)), $("td", {}, t.action ? badge(t.action) : "–"), $("td", {}, t.language || "–"), $("td", {}, t.category || "–"),
           $("td", {}, t.priority || "–"), $("td", { cls: t.outcome === "error" ? "warn" : "" }, t.outcome), $("td", { cls: "mono", style: "font-size:11.5px" }, (t.overrides || []).join(", ") || "–"))))];
-  });
+  };
+  fillLog();
   return [...head("Chapter 8", "Run it yourself",
     "Python 3.12+ and uv. Keys go in .env (git-ignored); .env.example lists them. Re-running is always safe."),
     card("From a fresh clone",
@@ -615,6 +618,7 @@ function chRun() {
       cmd("uv run agent.py --dry-run", "decide every open ticket and print, post nothing"),
       cmd("uv run agent.py --reset", "the clean run: reset the practice set, then handle all 30 once"),
       cmd("uv run ui.py", "this walkthrough at http://127.0.0.1:8000")),
+    runner,
     card("Latest decision per ticket (logs/agent.jsonl)", log),
     card("What I would do next", $("ul", {},
       $("li", {}, $("b", {}, "Human-approved drafts first "), "(a LangGraph interrupt before post), then auto-send per category, with a kill switch."),
@@ -622,6 +626,54 @@ function chRun() {
       $("li", {}, $("b", {}, "An AI disclosure in replies "), "(EU AI Act art. 50)."),
       $("li", {}, $("b", {}, "~100 tickets labelled by the support team "), "plus a red-team set, with the eval in CI. Priority is the weakest field."),
       $("li", {}, $("b", {}, "Rule change: "), "define 'contract changes'. Read literally it includes upgrading, which F05 tells customers to do themselves.")))];
+}
+
+// "Run all": starts agent.py on the server and follows its output
+function runPanel(onDone) {
+  const out = $("pre", { style: "margin-top:14px;max-height:360px", hidden: "" });
+  const bar = $("div", { cls: "fill", style: "width:0%" }), progress = $("div", { cls: "bar final", style: "grid-template-columns:1fr 90px;margin-top:14px", hidden: "" },
+    $("div", { cls: "track" }, bar), $("span", { cls: "v" }));
+  const state = $("p", { cls: "muted", style: "margin-top:10px" });
+  const modes = [
+    ["dry", "Dry run all", "decides every open ticket, posts nothing", null],
+    ["open", "Run open tickets", "decides and posts every ticket that is still open", "Post a decision for every open ticket? Each customer gets at most one answer."],
+    ["reset", "Reset & run all 30", "the final run: POST /practice/reset, then decide and post all 30 once", "Reset the practice set and post decisions for all 30 tickets? This becomes the run Nordavo scores."],
+  ];
+  const buttons = modes.map(([m, label, , ask]) => $("button", { cls: m === "reset" ? "primary" : "", on: { click: () => start(m, ask) } }, label));
+  let timer = null;
+  function show(r) {
+    const head = r.lines.find(l => / open of \d+ tickets/.test(l));
+    const total = head ? +head.match(/: (\d+) open/)[1] : 0;
+    const done = r.lines.filter(l => /^T\d+\s/.test(l)).length;
+    out.hidden = progress.hidden = !r.lines.length && !r.running;
+    out.textContent = r.lines.join("\n") || "starting…";
+    out.scrollTop = out.scrollHeight;
+    bar.style.width = total ? `${done / total * 100}%` : "0%";
+    progress.lastChild.textContent = total ? `${done} / ${total}` : "";
+    buttons.forEach(b => b.disabled = r.running);
+    state.replaceChildren(r.running ? [$("span", { cls: "spin" }), `Running (${r.mode})…`]
+      : r.exit == null ? "" : $("span", { cls: r.exit === 0 ? "ok" : "warn" }, r.exit === 0 ? `Finished (${r.mode}), no errors.` : `Finished with errors (exit ${r.exit}). Failed tickets stay open; run again to retry them.`));
+  }
+  async function poll() {
+    try {
+      const r = await api("/api/run");
+      show(r);
+      clearTimeout(timer);
+      if (r.running) timer = setTimeout(() => document.body.contains(out) && poll(), 1000);
+      else if (r.exit != null && out.dataset.watching) { delete out.dataset.watching; onDone(); }
+    } catch (e) { state.replaceChildren(fail(e)); }
+  }
+  async function start(mode, ask) {
+    if (ask && !confirm(ask)) return;
+    try { show(await api("/api/run", { mode })); out.dataset.watching = "1"; poll(); }
+    catch (e) { state.replaceChildren(fail(e)); }
+  }
+  api("/api/run").then(r => { if (r.running) out.dataset.watching = "1"; poll(); }).catch(() => {});
+  return card("Run all tickets from here",
+    $("p", { cls: "muted" }, "Runs ", $("code", {}, "agent.py"), " on the server, exactly like the command line, and streams its output. Same safeguards: a ticket that is already handled is never posted again."),
+    $("div", { cls: "row" }, buttons),
+    $("ul", { cls: "muted", style: "margin-top:10px;font-size:13px" }, modes.map(([, label, what]) => $("li", {}, $("b", {}, label), ": ", what))),
+    progress, state, out);
 }
 
 // ---------- shell

@@ -31,6 +31,26 @@ DRY = graph.build()
 SAVER = SqliteSaver(sqlite3.connect(ROOT / "checkpoints.db", check_same_thread=False))
 LIVE = graph.build(helpdesk=HD, checkpointer=SAVER)
 POST_LOCK = threading.Lock()  # one posting run at a time, like the CLI
+RUN = {"running": False, "mode": None, "lines": [], "exit": None, "proc": None}  # the "run all" job (one at a time)
+
+
+def start_run(mode):
+    """Run agent.py itself as a child process (same code path as the CLI) and collect its output."""
+    args = {"dry": ["--dry-run"], "open": [], "reset": ["--reset"]}[mode]
+    with POST_LOCK:
+        if RUN["running"]:
+            return False
+        RUN.update(running=True, mode=mode, lines=[], exit=None)
+    proc = RUN["proc"] = subprocess.Popen([sys.executable, "-u", "agent.py", *args], cwd=ROOT, text=True,
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+    def pump():
+        for line in proc.stdout:
+            RUN["lines"].append(line.rstrip("\n"))  # agent.py only prints redacted text
+
+        RUN.update(exit=proc.wait(), running=False)
+    threading.Thread(target=pump, daemon=True).start()
+    return True
 
 
 def trace(state, nodes, secs, resumed=False):
@@ -146,6 +166,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"mermaid": DRY.get_graph().draw_mermaid()})
             elif self.path == "/api/evals":
                 self._json(evals(rows=True))
+            elif self.path == "/api/run":
+                self._json({k: v for k, v in RUN.items() if k != "proc"})
             elif self.path == "/api/log":
                 self._json(run_log())
             elif self.path == "/api/config":
@@ -165,6 +187,13 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
             body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
+            if self.path == "/api/run":
+                mode = body.get("mode")
+                if mode not in ("dry", "open", "reset"):
+                    return self._json({"error": "mode must be dry, open or reset"}, 400)
+                return self._json({"running": True, "mode": mode, "lines": [], "exit": None}) if start_run(mode) else self._json({"error": "a run is already in progress"}, 409)
+            if self.path == "/api/post" and RUN["running"]:
+                return self._json({"error": "a run-all is in progress"}, 409)
             if self.path == "/api/tests":
                 return self._json(run_tests())
             if self.path == "/api/redact":  # safety playground: what the deterministic layer does to some text
@@ -204,3 +233,6 @@ if __name__ == "__main__":
         server.serve_forever()
     except KeyboardInterrupt:
         print("stopped")
+    finally:  # do not leave a run-all child behind (it is safe to stop: unfinished tickets resume next run)
+        if RUN["running"] and RUN["proc"]:
+            RUN["proc"].terminate()
