@@ -12,6 +12,8 @@ uv run ui.py                         # optional demo UI, 127.0.0.1:8000
 
 ## Decisions
 
+![One ticket through the pipeline](docs/pipeline.png)
+
 1. **A fixed LangGraph pipeline** (`graph.py`): the model fills strict JSON schemas and plain code decides.
    LangChain is only the model client.
 2. **Code can only move a ticket towards a human.** A client-rule flag or nl/en/de keyword, P1, disagreement

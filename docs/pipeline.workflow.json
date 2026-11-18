@@ -1,0 +1,233 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Roosterly Support Agent: One Ticket Through the Pipeline",
+    "quality_profile": "showcase",
+    "output": ".archify/workflow-agent-pipeline-20261119-025108/agent-pipeline.html",
+    "viewBox": [
+      840,
+      528
+    ]
+  },
+  "lanes": [
+    {
+      "id": "helpdesk",
+      "label": "Helpdesk API"
+    },
+    {
+      "id": "code",
+      "label": "Agent code (plain Python)"
+    },
+    {
+      "id": "model",
+      "label": "Model calls (OpenRouter)"
+    }
+  ],
+  "phases": [
+    {
+      "id": "intake",
+      "label": "Intake",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "decide",
+      "label": "Decide",
+      "fromCol": 2,
+      "toCol": 3,
+      "variant": "emphasis"
+    },
+    {
+      "id": "answer",
+      "label": "Write, check, post",
+      "fromCol": 4,
+      "toCol": 5
+    }
+  ],
+  "groups": [
+    {
+      "id": "gates",
+      "label": "Guardrails in code",
+      "lane": "code",
+      "fromCol": 3,
+      "toCol": 5,
+      "variant": "security"
+    }
+  ],
+  "mainPath": [
+    "open",
+    "fetch",
+    "prepare",
+    "triage",
+    "policy",
+    "draft",
+    "verify",
+    "post",
+    "decision"
+  ],
+  "nodes": [
+    {
+      "id": "open",
+      "lane": "helpdesk",
+      "col": 0,
+      "type": "external",
+      "label": "Open tickets",
+      "sublabel": "GET /tickets, paged"
+    },
+    {
+      "id": "decision",
+      "lane": "helpdesk",
+      "col": 5,
+      "type": "external",
+      "label": "One decision",
+      "sublabel": "reply / handoff / close"
+    },
+    {
+      "id": "fetch",
+      "lane": "code",
+      "col": 0,
+      "type": "security",
+      "label": "Fetch + redact",
+      "sublabel": "cards, IBANs removed"
+    },
+    {
+      "id": "prepare",
+      "lane": "code",
+      "col": 1,
+      "type": "backend",
+      "label": "Prepare",
+      "sublabel": "detect empty ticket"
+    },
+    {
+      "id": "policy",
+      "lane": "code",
+      "col": 3,
+      "type": "security",
+      "label": "Vote + policy",
+      "sublabel": "rules, P1, disagreement"
+    },
+    {
+      "id": "post",
+      "lane": "code",
+      "col": 5,
+      "type": "backend",
+      "label": "Post",
+      "sublabel": "re-check, POST, log line",
+      "width": 140
+    },
+    {
+      "id": "triage",
+      "lane": "model",
+      "col": 2,
+      "type": "cloud",
+      "label": "Triage x3",
+      "sublabel": "strict JSON, T=0.8"
+    },
+    {
+      "id": "draft",
+      "lane": "model",
+      "col": 4,
+      "type": "cloud",
+      "label": "Draft reply",
+      "sublabel": "cited FAQ only"
+    },
+    {
+      "id": "verify",
+      "lane": "model",
+      "col": 5,
+      "type": "cloud",
+      "label": "Verify",
+      "sublabel": "back-translate + filter"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-open-fetch",
+      "from": "open",
+      "to": "fetch",
+      "label": "ticket"
+    },
+    {
+      "id": "e-fetch-prepare",
+      "from": "fetch",
+      "to": "prepare"
+    },
+    {
+      "id": "e-prepare-triage",
+      "from": "prepare",
+      "to": "triage",
+      "label": "3 samples",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-prepare-empty",
+      "from": "prepare",
+      "to": "policy",
+      "label": "empty",
+      "role": "branch",
+      "variant": "dashed"
+    },
+    {
+      "id": "e-triage-policy",
+      "from": "triage",
+      "to": "policy",
+      "label": "votes"
+    },
+    {
+      "id": "e-policy-draft",
+      "from": "policy",
+      "to": "draft",
+      "label": "reply",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-policy-post",
+      "from": "policy",
+      "to": "post",
+      "label": "handoff / close",
+      "role": "branch",
+      "variant": "security"
+    },
+    {
+      "id": "e-draft-verify",
+      "from": "draft",
+      "to": "verify"
+    },
+    {
+      "id": "e-verify-post",
+      "from": "verify",
+      "to": "post",
+      "label": "pass, or handoff",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-post-decision",
+      "from": "post",
+      "to": "decision",
+      "label": "skip if handled",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "Forces a handoff",
+      "items": [
+        "Client rule flagged by any sample, or a nl/en/de keyword",
+        "P1, samples disagree, no FAQ cited, confidence < 0.7",
+        "Reply check fails: language, claim, promise, link, payment detail"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Reliability",
+      "items": [
+        "429: 4 calls/s throttle, then wait Retry-After",
+        "503 / network: jittered backoff, 8 tries",
+        "409: counts as already handled, never a second answer",
+        "Crash: each ticket is a checkpointed LangGraph thread and resumes at its last step"
+      ]
+    }
+  ]
+}
