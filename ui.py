@@ -66,7 +66,8 @@ def trace(state, nodes, secs, resumed=False):
 
 
 def decide(ticket, post):
-    tickets = [redact_ticket(t) for t in HD.all_tickets()] if (post or ticket.get("id", "").startswith("T")) else []
+    is_helpdesk = ticket.get("id") not in (None, "CUSTOM") and "label" not in ticket  # not an example or a typed one
+    tickets = [redact_ticket(t) for t in HD.all_tickets()] if (post or is_helpdesk) else []
     t = redact_ticket(ticket)
     started = time.monotonic()
     if not post:
@@ -226,7 +227,8 @@ class Handler(BaseHTTPRequestHandler):
             if self.path not in ("/api/decide", "/api/post"):
                 return self._json({"error": "not_found"}, 404)
             ticket = body.get("ticket") or {}
-            if self.path == "/api/post" and not str(ticket.get("id", "")).startswith("T"):
+            # only a ticket that exists in the helpdesk can be posted (ids are not assumed to start with "T")
+            if self.path == "/api/post" and ticket.get("id") not in {t["id"] for t in HD.all_tickets()}:
                 return self._json({"error": "only helpdesk tickets can be posted"}, 400)
             ticket.setdefault("id", "CUSTOM")
             self._json(decide(ticket, post=self.path == "/api/post"))

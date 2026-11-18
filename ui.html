@@ -794,7 +794,7 @@ function runPanel(onDone, onProgress) {
   function show(r) {
     const head = r.lines.find(l => / open of \d+ tickets/.test(l));
     const total = head ? +head.match(/: (\d+) open/)[1] : 0;
-    const done = r.lines.filter(l => /^T\d+\s/.test(l)).length;
+    const done = r.lines.filter(l => /^\S+\s+(reply|handoff|close|ERROR)\b/.test(l)).length;  // one line per ticket, any id format
     out.hidden = progress.hidden = !r.lines.length && !r.running;
     out.textContent = r.lines.join("\n") || "starting…";
     out.scrollTop = out.scrollHeight;
