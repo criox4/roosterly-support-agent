@@ -5,8 +5,11 @@ Runs the same LangGraph pipeline as agent.py. "Decide" is a dry run (nothing pos
 "Decide & post" goes through the same checkpointed, re-check-before-post path as agent.py.
 Standard library only; binds to localhost.
 """
+import inspect
 import json
 import sqlite3
+import subprocess
+import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -16,6 +19,8 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 
 import agent
 import graph
+import helpdesk
+import safety
 from helpdesk import ApiError, Helpdesk
 from safety import redact, redact_ticket
 
@@ -55,9 +60,61 @@ def decide(ticket, post):
         return trace(state, nodes, secs, resumed)
 
 
-def latest_eval():
+def evals(rows=False):
     files = sorted((ROOT / "eval" / "results").glob("*.json"), key=lambda p: p.stat().st_mtime)
-    return [json.loads(p.read_text())["summary"] for p in files]
+    data = [json.loads(p.read_text()) for p in files]
+    return data if rows else [d["summary"] for d in data]
+
+
+# Code the walkthrough may show, by name (a whitelist: the UI never reads arbitrary files).
+CODE = {"prepare": graph.prepare, "triage": graph.triage, "vote": graph.vote, "policy": graph.policy,
+        "draft": graph.draft, "verify": graph.verify, "build": graph.build, "payload": graph.payload,
+        "call": helpdesk.Helpdesk.call, "decide": helpdesk.Helpdesk.decide, "run_ticket": agent.run_ticket,
+        "thread_for": agent.thread_for, "redact": safety.redact, "rule_hits": safety.rule_hits,
+        "reply_problems": safety.reply_problems, "Triage": graph.Triage, "Check": graph.Check}
+PROMPTS = ("TRIAGE_SYSTEM", "DRAFT_SYSTEM", "CHECK_SYSTEM", "UNTRUSTED")
+
+
+def code(name):
+    if name in PROMPTS:
+        src = (ROOT / "graph.py").read_text().splitlines()
+        line = next(i for i, l in enumerate(src, 1) if l.startswith(name + " ="))
+        return {"name": name, "file": "graph.py", "line": line, "source": getattr(graph, name)}
+    obj = CODE[name]
+    lines, line = inspect.getsourcelines(obj)
+    return {"name": name, "file": Path(inspect.getsourcefile(obj)).name, "line": line, "source": "".join(lines)}
+
+
+def run_tests():
+    """Run the two offline self-checks (no network, nothing posted) and list what they cover."""
+    out = []
+    for script in ("test_reliability.py", "safety.py"):
+        started = time.monotonic()
+        p = subprocess.run([sys.executable, script], cwd=ROOT, capture_output=True, text=True, timeout=60)
+        src = (ROOT / script).read_text()
+        if script == "test_reliability.py":
+            checks = [l[2:] for l in src.splitlines() if l.startswith("# ")]
+        else:
+            checks = [f"{src.split('__main__')[1].count('assert ')} assertions: card numbers (Luhn), IBANs (mod-97), "
+                      "CVC and expiry redaction; rule keywords; reply egress filter"]
+        out.append({"script": script, "ok": p.returncode == 0, "checks": checks,
+                    "output": redact((p.stdout + p.stderr).strip())[-1500:], "secs": round(time.monotonic() - started, 2)})
+    return out
+
+
+def run_log():
+    """Latest decision per ticket from logs/agent.jsonl, plus one line per run."""
+    path = ROOT / "logs" / "agent.jsonl"
+    recs = [json.loads(l) for l in path.read_text(encoding="utf-8").splitlines() if l.strip()] if path.exists() else []
+    latest, runs = {}, {}
+    for r in recs:
+        run = runs.setdefault(r["run"], {"run": r["run"], "tickets": 0, "errors": 0, "cost": 0.0})
+        run["tickets"] += 1
+        run["errors"] += r["outcome"] == "error"
+        run["cost"] = round(run["cost"] + (r.get("cost_usd") or 0), 6)
+        if r["outcome"] != "error" or r["ticket"] not in latest:
+            latest[r["ticket"]] = r
+    return {"tickets": [latest[k] for k in sorted(latest)], "runs": list(runs.values()), "lines": len(recs)}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -83,10 +140,23 @@ class Handler(BaseHTTPRequestHandler):
             elif self.path == "/api/examples":
                 self._json([redact_ticket(e) for e in HD.examples()])
             elif self.path == "/api/status":
-                self._json({**HD.call("GET", "/status"), "evals": latest_eval(),
+                self._json({**HD.call("GET", "/status"), "evals": evals(),
                             "model": graph.model(0).model_name})
             elif self.path == "/api/graph":
                 self._json({"mermaid": DRY.get_graph().draw_mermaid()})
+            elif self.path == "/api/evals":
+                self._json(evals(rows=True))
+            elif self.path == "/api/log":
+                self._json(run_log())
+            elif self.path == "/api/config":
+                self._json({"rules": safety.RULE_KEYWORDS, "allowed_domains": sorted(graph.ALLOWED_DOMAINS),
+                            "samples": graph.SAMPLES, "confidence_min": graph.CONFIDENCE_MIN,
+                            "faq": {k: v.splitlines()[0][3:] for k, v in graph.FAQ_SECTIONS.items()},
+                            "throttle_per_s": round(1 / Helpdesk.MIN_INTERVAL), "max_tries": Helpdesk.MAX_TRIES})
+            elif self.path.startswith("/api/code/"):
+                name = self.path.rsplit("/", 1)[1]
+                self._json(code(name) if name in CODE or name in PROMPTS else {"error": "not_found"},
+                           200 if name in CODE or name in PROMPTS else 404)
             else:
                 self._json({"error": "not_found"}, 404)
         except ApiError as e:
@@ -95,6 +165,12 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
             body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
+            if self.path == "/api/tests":
+                return self._json(run_tests())
+            if self.path == "/api/redact":  # safety playground: what the deterministic layer does to some text
+                text = str(body.get("text", ""))[:5000]
+                return self._json({"redacted": redact(text), "rule_hits": safety.rule_hits({"body": text}),
+                                   "reply_problems": safety.reply_problems(text, graph.ALLOWED_DOMAINS)})
             if self.path not in ("/api/decide", "/api/post"):
                 return self._json({"error": "not_found"}, 404)
             ticket = body.get("ticket") or {}
