@@ -610,7 +610,7 @@ function chRun() {
     l.tickets.forEach(t => counts[t.action] = (counts[t.action] || 0) + 1);
     return [$("div", { cls: "row", style: "margin-bottom:12px" }, Object.entries(counts).map(([a, n]) => [badge(a), $("span", { style: "margin-right:12px" }, ` ${n}`)]),
         $("span", { cls: "muted" }, `${l.lines} log lines over ${l.runs.length} run(s), $${l.runs.reduce((s, r) => s + r.cost, 0).toFixed(4)} total`)),
-      $("table", {}, $("tr", {}, $("th", {}, "ticket"), $("th", {}, "action"), $("th", {}, "lang"), $("th", {}, "category"), $("th", {}, "prio"), $("th", {}, "status"), $("th", {}, "guardrails"), $("th", {}, "outcome")),
+      $("table", {}, $("tr", {}, $("th", {}, "ticket"), $("th", {}, "action"), $("th", {}, "lang"), $("th", {}, "category"), $("th", {}, "prio"), $("th", {}, "status"), $("th", {}, "guardrails"), $("th", {}, "details")),
         l.tickets.map(t => $("tr", {}, $("td", {}, $("b", {}, t.ticket)), $("td", {}, t.action ? badge(t.action) : "–"), $("td", {}, t.language || "–"), $("td", {}, t.category || "–"),
           $("td", {}, t.priority || "–"), $("td", { cls: t.outcome === "error" ? "warn" : "" }, t.outcome), $("td", { cls: "mono", style: "font-size:11.5px" }, (t.overrides || []).join(", ") || "–"),
           $("td", {}, $("button", { cls: "small", on: { click: () => outcomeModal(t) } }, "View")))))];
@@ -647,6 +647,15 @@ function outcomeModal(t) {
   d.append($("div", { cls: "dhead" }, $("div", { cls: "row" }, $("b", {}, t.ticket), t.action ? badge(t.action) : null, $("span", { cls: "chip" }, t.outcome)),
       $("button", { cls: "small", on: { click: close } }, "Close")),
     $("div", { cls: "dbody" },
+      later($("div"), get("/api/tickets"), all => {
+        const tk = all.find(x => x.id === t.ticket);
+        if (!tk) return $("p", { cls: "muted" }, "Ticket not found in the helpdesk.");
+        return card("Ticket (as the agent saw it, payment details redacted)",
+          $("div", { cls: "row", style: "margin-bottom:10px" }, [`channel ${tk.channel}`, `plan ${tk.customer_plan}`, `received ${tk.received_at}`,
+            `helpdesk: ${tk.handled ? `handled (${handledAction(tk.handled)})` : "open"}`].map(c => $("span", { cls: "chip" }, c))),
+          $("div", { style: "font-weight:600;margin-bottom:6px" }, tk.subject || "(no subject)"),
+          $("div", { cls: "body" }, tk.body || "(empty body)"));
+      }),
       t.error ? card("Error", $("p", { cls: "warn" }, t.error), $("p", { cls: "muted" }, "Nothing was posted; the ticket stays open for the next run.")) : null,
       chips.length ? $("div", { cls: "row", style: "margin-bottom:12px" }, chips.map(c => $("span", { cls: "chip" }, c))) : null,
       t.reason ? card("Reason", $("p", {}, t.reason)) : null,
