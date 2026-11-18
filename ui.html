@@ -685,7 +685,8 @@ function runPanel(onDone, onProgress) {
     progress.lastChild.textContent = total ? `${done} / ${total}` : "";
     buttons.forEach(b => b.disabled = r.running);
     state.replaceChildren(...(r.running ? [$("span", { cls: "spin" }), `Running (${r.mode})… ${done}${total ? ` of ${total}` : ""} tickets done`]
-      : r.exit == null ? [] : [$("span", { cls: r.exit === 0 ? "ok" : "warn" }, r.exit === 0 ? `Finished (${r.mode}), no errors.` : `Finished with errors (exit ${r.exit}). Failed tickets stay open; run again to retry them.`)]));
+      : r.exit == null ? [] : [$("span", { cls: r.exit === 0 ? "ok" : "warn" }, r.exit === 0 ? `Finished (${r.mode}), no errors.` : `Finished with errors (exit ${r.exit}). Failed tickets stay open; run again to retry them.`),
+        " Pick a button above to start another run. ", $("button", { cls: "small", on: { click: () => { out.hidden = progress.hidden = true; state.replaceChildren(); } } }, "Clear output")]));
     return done;
   }
   async function poll() {
