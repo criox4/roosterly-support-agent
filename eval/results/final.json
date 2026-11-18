@@ -1,0 +1,984 @@
+{
+  "summary": {
+    "tag": "final",
+    "model": "openai/gpt-6-luna",
+    "examples": 10,
+    "runs": 3,
+    "unsafe": 0,
+    "over_escalated": 1,
+    "accuracy": {
+      "action": 0.97,
+      "language": 1.0,
+      "category": 1.0,
+      "priority": 0.8
+    },
+    "all_fields_correct": 0.77,
+    "cost_usd": 0.01216,
+    "cost_per_100_tickets_usd": 0.0405,
+    "action_consistent_across_runs": 0.9
+  },
+  "rows": [
+    {
+      "run": 0,
+      "id": "E01",
+      "label": {
+        "action": "reply",
+        "language": "en",
+        "category": "bug",
+        "priority": "P3"
+      },
+      "label_reason": "English ticket. FAQ F12 covers it: the app needs iOS 16 or later, so we can answer in English without a human.",
+      "pred": {
+        "action": "reply",
+        "language": "en",
+        "category": "bug",
+        "priority": "P2",
+        "overrides": [],
+        "sample_actions": [
+          "reply",
+          "reply",
+          "reply"
+        ],
+        "reply_en": "Hi,\n\nThe app works on iOS 16 and later, so iOS 15 isn’t supported. The app also requires location permission to clock in with location.\n\nBest,\nTeam Roosterly",
+        "reason": "The app crashes for one customer, but the help centre states that iOS 16 or later is required, explaining the issue on iOS 15. The customer is blocked, so the priority is P2; the documented requirement allows a reply without handoff.",
+        "cost": 0.000603205
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": false
+      }
+    },
+    {
+      "run": 0,
+      "id": "E02",
+      "label": {
+        "action": "reply",
+        "language": "nl",
+        "category": "billing",
+        "priority": "P4"
+      },
+      "label_reason": "How to change invoice details is in FAQ F06. Reply in Dutch.",
+      "pred": {
+        "action": "reply",
+        "language": "nl",
+        "category": "billing",
+        "priority": "P2",
+        "overrides": [],
+        "sample_actions": [
+          "reply",
+          "reply",
+          "reply"
+        ],
+        "reply_en": "Hi! You can update the VAT number for future invoices under Settings → Company details. You can download invoices under Settings → Subscription → Invoices.\n\nBest,\nTeam Roosterly",
+        "reason": "The customer asks how to update the VAT number on future invoices, which is covered by the self-service company details instructions. No contract change or disputed charge is involved.",
+        "cost": 0.00076377
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": false
+      }
+    },
+    {
+      "run": 0,
+      "id": "E03",
+      "label": {
+        "action": "handoff",
+        "language": "nl",
+        "category": "billing",
+        "priority": "P2"
+      },
+      "label_reason": "Refund request ('terugkrijgen' = get back). Client rule: refunds always go to a human.",
+      "pred": {
+        "action": "handoff",
+        "language": "nl",
+        "category": "billing",
+        "priority": "P2",
+        "overrides": [],
+        "sample_actions": [
+          "handoff",
+          "handoff",
+          "handoff"
+        ],
+        "reply_en": null,
+        "reason": "The customer asks for a refund for August because the business was closed for renovation. Refund requests must be handled by a human, and money is involved, so this is P2.",
+        "cost": 0.00027596
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": true
+      }
+    },
+    {
+      "run": 0,
+      "id": "E04",
+      "label": {
+        "action": "reply",
+        "language": "nl",
+        "category": "question",
+        "priority": "P4"
+      },
+      "label_reason": "Dutch how-to question about swapping shifts, answered by FAQ F03. Reply in Dutch.",
+      "pred": {
+        "action": "reply",
+        "language": "nl",
+        "category": "question",
+        "priority": "P4",
+        "overrides": [],
+        "sample_actions": [
+          "reply",
+          "reply",
+          "reply"
+        ],
+        "reply_en": "Hi! Open the shift in the app and tap ‘Offer swap’. Colleagues with the same role can accept the swap. After that, the manager approves the swap via Rota → Requests.\n\nRegards,\nRoosterly Team",
+        "reason": "The customer asks how to swap a shift, and FAQ F03 provides the steps. This is a routine how-to question with no need for human review.",
+        "cost": 0.00046019999999999996
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": true
+      }
+    },
+    {
+      "run": 0,
+      "id": "E05",
+      "label": {
+        "action": "reply",
+        "language": "nl",
+        "category": "feature_request",
+        "priority": "P4"
+      },
+      "label_reason": "Feature request (Google Calendar sync). Acknowledge in Dutch and point to the roadmap (F10).",
+      "pred": {
+        "action": "reply",
+        "language": "nl",
+        "category": "feature_request",
+        "priority": "P4",
+        "overrides": [],
+        "sample_actions": [
+          "reply",
+          "reply",
+          "reply"
+        ],
+        "reply_en": "Hi,\n\nThank you for your idea! We read every suggestion. You can view ideas and vote on them at roadmap.roosterly.nl. We cannot promise a delivery date for individual requests.\n\nRegards,\nTeam Roosterly",
+        "reason": "The customer requests a Google Calendar integration, which is a feature request. The help centre directs customers to the public roadmap to submit and vote on ideas; this is non-urgent.",
+        "cost": 0.0005388999999999999
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": true
+      }
+    },
+    {
+      "run": 0,
+      "id": "E06",
+      "label": {
+        "action": "handoff",
+        "language": "en",
+        "category": "bug",
+        "priority": "P2"
+      },
+      "label_reason": "One customer blocked from publishing: P2, needs an engineer.",
+      "pred": {
+        "action": "handoff",
+        "language": "en",
+        "category": "bug",
+        "priority": "P2",
+        "overrides": [],
+        "sample_actions": [
+          "handoff",
+          "handoff",
+          "handoff"
+        ],
+        "reply_en": null,
+        "reason": "Publishing the rota fails with an error, leaving next week's rota unavailable to staff. This is an unexplained product issue that blocks the customer, so it needs human investigation.",
+        "cost": 0.000305605
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": true
+      }
+    },
+    {
+      "run": 0,
+      "id": "E07",
+      "label": {
+        "action": "reply",
+        "language": "nl",
+        "category": "billing",
+        "priority": "P4"
+      },
+      "label_reason": "Price question answered by F05 (25 x €6 = €150 excl. VAT). Reply in Dutch.",
+      "pred": {
+        "action": "reply",
+        "language": "nl",
+        "category": "billing",
+        "priority": "P4",
+        "overrides": [],
+        "sample_actions": [
+          "reply",
+          "reply",
+          "reply"
+        ],
+        "reply_en": "Hi! Plus costs €6 per active employee per month. For 25 active employees, that is €150 per month, excluding VAT.\n\nBest,\nRoosterly Team",
+        "reason": "The customer asks for the Plus plan price, which is fully answered by the pricing FAQ. This is a low-urgency pricing question with no rule requiring handoff.",
+        "cost": 0.000504565
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": true
+      }
+    },
+    {
+      "run": 0,
+      "id": "E08",
+      "label": {
+        "action": "close",
+        "language": "nl",
+        "category": "other",
+        "priority": "P4"
+      },
+      "label_reason": "Spam (crypto offer): close it.",
+      "pred": {
+        "action": "close",
+        "language": "nl",
+        "category": "other",
+        "priority": "P4",
+        "overrides": [],
+        "sample_actions": [
+          "close",
+          "close",
+          "close"
+        ],
+        "reply_en": null,
+        "reason": "This is unsolicited promotional spam, so it should be closed.",
+        "cost": 0.00022517000000000001
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": true
+      }
+    },
+    {
+      "run": 0,
+      "id": "E09",
+      "label": {
+        "action": "handoff",
+        "language": "nl",
+        "category": "other",
+        "priority": "P2"
+      },
+      "label_reason": "GDPR access request ('inzageverzoek', AVG = Dutch GDPR): always a human.",
+      "pred": {
+        "action": "handoff",
+        "language": "nl",
+        "category": "other",
+        "priority": "P2",
+        "overrides": [],
+        "sample_actions": [
+          "handoff",
+          "handoff",
+          "handoff"
+        ],
+        "reply_en": null,
+        "reason": "This is an AVG request for access to personal data, which must be handled by a human under the support rules. The request concerns one customer and requires a human review, so priority is P2.",
+        "cost": 0.000284815
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": true
+      }
+    },
+    {
+      "run": 0,
+      "id": "E10",
+      "label": {
+        "action": "reply",
+        "language": "nl",
+        "category": "question",
+        "priority": "P4"
+      },
+      "label_reason": "Asks about planned maintenance tonight. Point to the status page (F11), in Dutch.",
+      "pred": {
+        "action": "reply",
+        "language": "nl",
+        "category": "question",
+        "priority": "P4",
+        "overrides": [],
+        "sample_actions": [
+          "reply",
+          "reply",
+          "reply"
+        ],
+        "reply_en": "Hi! You can view current outages and planned maintenance at status.roosterly.nl.\n\nRegards,\nTeam Roosterly",
+        "reason": "The customer asks whether maintenance is planned tonight; the help centre directs customers to the status page for planned maintenance. This is a low-urgency information question and can be answered with that resource.",
+        "cost": 0.000429175
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": true
+      }
+    },
+    {
+      "run": 1,
+      "id": "E01",
+      "label": {
+        "action": "reply",
+        "language": "en",
+        "category": "bug",
+        "priority": "P3"
+      },
+      "label_reason": "English ticket. FAQ F12 covers it: the app needs iOS 16 or later, so we can answer in English without a human.",
+      "pred": {
+        "action": "reply",
+        "language": "en",
+        "category": "bug",
+        "priority": "P2",
+        "overrides": [],
+        "sample_actions": [
+          "reply",
+          "reply",
+          "reply"
+        ],
+        "reply_en": "Hi,\n\nThe app works on iOS 16 and later, so iOS 15 is below the supported version.\n\nBest,\nTeam Roosterly",
+        "reason": "The app crashes for one user, but the stated iOS 15 version is below the documented iOS 16 minimum, which explains the issue and gives the customer an actionable next step. This affects one user, not the whole team.",
+        "cost": 0.00053511
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": false
+      }
+    },
+    {
+      "run": 1,
+      "id": "E02",
+      "label": {
+        "action": "reply",
+        "language": "nl",
+        "category": "billing",
+        "priority": "P4"
+      },
+      "label_reason": "How to change invoice details is in FAQ F06. Reply in Dutch.",
+      "pred": {
+        "action": "reply",
+        "language": "nl",
+        "category": "billing",
+        "priority": "P2",
+        "overrides": [],
+        "sample_actions": [
+          "reply",
+          "reply",
+          "reply"
+        ],
+        "reply_en": "Hi! You can update the VAT number for future invoices via Settings → Company details. You can download invoices via Settings → Subscription → Invoices. Cheers, Team Roosterly",
+        "reason": "The customer asks how to update the VAT number on future invoices, which the help centre explains under company details. This is a self-service billing question, not a disputed charge or contract change.",
+        "cost": 0.00046388
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": false
+      }
+    },
+    {
+      "run": 1,
+      "id": "E03",
+      "label": {
+        "action": "handoff",
+        "language": "nl",
+        "category": "billing",
+        "priority": "P2"
+      },
+      "label_reason": "Refund request ('terugkrijgen' = get back). Client rule: refunds always go to a human.",
+      "pred": {
+        "action": "handoff",
+        "language": "nl",
+        "category": "billing",
+        "priority": "P2",
+        "overrides": [],
+        "sample_actions": [
+          "handoff",
+          "handoff",
+          "handoff"
+        ],
+        "reply_en": null,
+        "reason": "The customer asks for a refund for August, which is a billing request. Refund requests must be handled by a human, so handoff is required.",
+        "cost": 0.00026597999999999997
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": true
+      }
+    },
+    {
+      "run": 1,
+      "id": "E04",
+      "label": {
+        "action": "reply",
+        "language": "nl",
+        "category": "question",
+        "priority": "P4"
+      },
+      "label_reason": "Dutch how-to question about swapping shifts, answered by FAQ F03. Reply in Dutch.",
+      "pred": {
+        "action": "reply",
+        "language": "nl",
+        "category": "question",
+        "priority": "P4",
+        "overrides": [],
+        "sample_actions": [
+          "reply",
+          "reply",
+          "reply"
+        ],
+        "reply_en": "You open the shift in the app and tap ‘Offer swap’. A colleague with the same role can accept the swap. Then the manager approves the swap via Rota → Requests.\n\nBest,\nTeam Roosterly",
+        "reason": "The customer asks how to swap a shift, and FAQ F03 provides the steps. This is a routine how-to question with no urgency.",
+        "cost": 0.00044204
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": true
+      }
+    },
+    {
+      "run": 1,
+      "id": "E05",
+      "label": {
+        "action": "reply",
+        "language": "nl",
+        "category": "feature_request",
+        "priority": "P4"
+      },
+      "label_reason": "Feature request (Google Calendar sync). Acknowledge in Dutch and point to the roadmap (F10).",
+      "pred": {
+        "action": "reply",
+        "language": "nl",
+        "category": "feature_request",
+        "priority": "P4",
+        "overrides": [],
+        "sample_actions": [
+          "reply",
+          "reply",
+          "reply"
+        ],
+        "reply_en": "Hi,\n\nThank you for your idea! We read all ideas. You can view and vote on feature requests via roadmap.roosterly.nl. We cannot promise a delivery date for individual requests.\n\nRegards,\nTeam Roosterly",
+        "reason": "The customer requests a Google Calendar integration, which is a feature request. The help centre directs feature requests to the public roadmap, so the customer can act on that guidance without a human handoff.",
+        "cost": 0.00051034
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": true
+      }
+    },
+    {
+      "run": 1,
+      "id": "E06",
+      "label": {
+        "action": "handoff",
+        "language": "en",
+        "category": "bug",
+        "priority": "P2"
+      },
+      "label_reason": "One customer blocked from publishing: P2, needs an engineer.",
+      "pred": {
+        "action": "handoff",
+        "language": "en",
+        "category": "bug",
+        "priority": "P2",
+        "overrides": [],
+        "sample_actions": [
+          "handoff",
+          "handoff",
+          "handoff"
+        ],
+        "reply_en": null,
+        "reason": "Publishing the rota fails, leaving staff unable to see next week's schedule. The help centre does not explain this error, and it blocks one customer.",
+        "cost": 0.00028301
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": true
+      }
+    },
+    {
+      "run": 1,
+      "id": "E07",
+      "label": {
+        "action": "reply",
+        "language": "nl",
+        "category": "billing",
+        "priority": "P4"
+      },
+      "label_reason": "Price question answered by F05 (25 x €6 = €150 excl. VAT). Reply in Dutch.",
+      "pred": {
+        "action": "reply",
+        "language": "nl",
+        "category": "billing",
+        "priority": "P4",
+        "overrides": [],
+        "sample_actions": [
+          "reply",
+          "reply",
+          "reply"
+        ],
+        "reply_en": "Hi! Plus costs €6 per active employee per month. For 25 active employees, that is €150 per month, excluding VAT.\n\nRegards,\nTeam Roosterly",
+        "reason": "The customer asks for the Plus price, which the help centre states is €6 per active employee per month, excluding VAT. This is a straightforward pricing question with no urgency or handoff rule.",
+        "cost": 0.00047385
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": true
+      }
+    },
+    {
+      "run": 1,
+      "id": "E08",
+      "label": {
+        "action": "close",
+        "language": "nl",
+        "category": "other",
+        "priority": "P4"
+      },
+      "label_reason": "Spam (crypto offer): close it.",
+      "pred": {
+        "action": "close",
+        "language": "nl",
+        "category": "other",
+        "priority": "P4",
+        "overrides": [],
+        "sample_actions": [
+          "close",
+          "close",
+          "close"
+        ],
+        "reply_en": null,
+        "reason": "This is unsolicited investment/crypto promotion, not a support request. It qualifies as spam and can be closed.",
+        "cost": 0.00021342000000000003
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": true
+      }
+    },
+    {
+      "run": 1,
+      "id": "E09",
+      "label": {
+        "action": "handoff",
+        "language": "nl",
+        "category": "other",
+        "priority": "P2"
+      },
+      "label_reason": "GDPR access request ('inzageverzoek', AVG = Dutch GDPR): always a human.",
+      "pred": {
+        "action": "handoff",
+        "language": "nl",
+        "category": "other",
+        "priority": "P2",
+        "overrides": [],
+        "sample_actions": [
+          "handoff",
+          "handoff",
+          "handoff"
+        ],
+        "reply_en": null,
+        "reason": "This is an AVG request to access personal data, which must be handled by a human under the support rules. It is not answered by the help centre.",
+        "cost": 0.00027845
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": true
+      }
+    },
+    {
+      "run": 1,
+      "id": "E10",
+      "label": {
+        "action": "reply",
+        "language": "nl",
+        "category": "question",
+        "priority": "P4"
+      },
+      "label_reason": "Asks about planned maintenance tonight. Point to the status page (F11), in Dutch.",
+      "pred": {
+        "action": "reply",
+        "language": "nl",
+        "category": "question",
+        "priority": "P4",
+        "overrides": [],
+        "sample_actions": [
+          "reply",
+          "reply",
+          "reply"
+        ],
+        "reply_en": "Hi! Check status.roosterly.nl for planned maintenance and current outages.\n\nCheers,\nTeam Roosterly",
+        "reason": "The customer asks whether maintenance is planned tonight. F11 directs customers to the status page for planned maintenance, which answers where to check.",
+        "cost": 0.00039759
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": true
+      }
+    },
+    {
+      "run": 2,
+      "id": "E01",
+      "label": {
+        "action": "reply",
+        "language": "en",
+        "category": "bug",
+        "priority": "P3"
+      },
+      "label_reason": "English ticket. FAQ F12 covers it: the app needs iOS 16 or later, so we can answer in English without a human.",
+      "pred": {
+        "action": "reply",
+        "language": "en",
+        "category": "bug",
+        "priority": "P2",
+        "overrides": [],
+        "sample_actions": [
+          "reply",
+          "reply",
+          "reply"
+        ],
+        "reply_en": "Hi,\n\nThe app works on iOS 16 and later, so iOS 15 isn’t supported.\n\nKind regards,\nTeam Roosterly",
+        "reason": "The customer reports an app crash on iOS 15, which is below the documented iOS 16 minimum requirement. The help centre explains the issue and gives the customer a clear next step.",
+        "cost": 0.00049201
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": false
+      }
+    },
+    {
+      "run": 2,
+      "id": "E02",
+      "label": {
+        "action": "reply",
+        "language": "nl",
+        "category": "billing",
+        "priority": "P4"
+      },
+      "label_reason": "How to change invoice details is in FAQ F06. Reply in Dutch.",
+      "pred": {
+        "action": "reply",
+        "language": "nl",
+        "category": "billing",
+        "priority": "P3",
+        "overrides": [],
+        "sample_actions": [
+          "reply",
+          "reply",
+          "reply"
+        ],
+        "reply_en": "Hi! You can change the VAT number for future invoices via Settings → Company details. Your invoices are sent by email on the 1st of every month, and you can also download them via Settings → Subscription → Invoices.\n\nRegards,\nRoosterly Team",
+        "reason": "The customer asks how to update the VAT number on future invoices, which is covered by the help centre. No escalation rule applies.",
+        "cost": 0.00048118
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": false
+      }
+    },
+    {
+      "run": 2,
+      "id": "E03",
+      "label": {
+        "action": "handoff",
+        "language": "nl",
+        "category": "billing",
+        "priority": "P2"
+      },
+      "label_reason": "Refund request ('terugkrijgen' = get back). Client rule: refunds always go to a human.",
+      "pred": {
+        "action": "handoff",
+        "language": "nl",
+        "category": "billing",
+        "priority": "P2",
+        "overrides": [],
+        "sample_actions": [
+          "handoff",
+          "handoff",
+          "handoff"
+        ],
+        "reply_en": null,
+        "reason": "The customer asks for a refund for August because the business was closed for renovations. Refund requests must be handled by a human, and money is involved, so priority is P2.",
+        "cost": 0.00029498
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": true
+      }
+    },
+    {
+      "run": 2,
+      "id": "E04",
+      "label": {
+        "action": "reply",
+        "language": "nl",
+        "category": "question",
+        "priority": "P4"
+      },
+      "label_reason": "Dutch how-to question about swapping shifts, answered by FAQ F03. Reply in Dutch.",
+      "pred": {
+        "action": "reply",
+        "language": "nl",
+        "category": "question",
+        "priority": "P4",
+        "overrides": [],
+        "sample_actions": [
+          "reply",
+          "reply",
+          "reply"
+        ],
+        "reply_en": "Hi! Open the shift in the app and tap ‘Offer swap’. A colleague with the same role can accept the swap. The manager then approves the swap via Rota → Requests.\n\nCheers,\nRoosterly Team",
+        "reason": "The customer asks how to swap a shift, which is answered by the shift-swapping instructions in F03. This is a routine how-to question with no urgency.",
+        "cost": 0.00044054
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": true
+      }
+    },
+    {
+      "run": 2,
+      "id": "E05",
+      "label": {
+        "action": "reply",
+        "language": "nl",
+        "category": "feature_request",
+        "priority": "P4"
+      },
+      "label_reason": "Feature request (Google Calendar sync). Acknowledge in Dutch and point to the roadmap (F10).",
+      "pred": {
+        "action": "reply",
+        "language": "nl",
+        "category": "feature_request",
+        "priority": "P4",
+        "overrides": [],
+        "sample_actions": [
+          "reply",
+          "reply",
+          "reply"
+        ],
+        "reply_en": "Hi,\n\nThank you for your idea! We read all ideas. You can post your request on the public roadmap and vote on ideas via roadmap.roosterly.nl. We cannot promise a delivery date for individual requests.\n\nRegards,\nTeam Roosterly",
+        "reason": "The customer requests a Google Calendar integration, which is a feature request. The help centre directs customers to the public roadmap to submit and vote on ideas; this is non-urgent and can be answered there.",
+        "cost": 0.00048784
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": true
+      }
+    },
+    {
+      "run": 2,
+      "id": "E06",
+      "label": {
+        "action": "handoff",
+        "language": "en",
+        "category": "bug",
+        "priority": "P2"
+      },
+      "label_reason": "One customer blocked from publishing: P2, needs an engineer.",
+      "pred": {
+        "action": "handoff",
+        "language": "en",
+        "category": "bug",
+        "priority": "P2",
+        "overrides": [],
+        "sample_actions": [
+          "handoff",
+          "handoff",
+          "handoff"
+        ],
+        "reply_en": null,
+        "reason": "The customer gets an error when publishing the rota, and staff cannot see next week's schedule. The help centre does not explain this issue, and the customer is blocked from publishing.",
+        "cost": 0.00030000999999999997
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": true
+      }
+    },
+    {
+      "run": 2,
+      "id": "E07",
+      "label": {
+        "action": "reply",
+        "language": "nl",
+        "category": "billing",
+        "priority": "P4"
+      },
+      "label_reason": "Price question answered by F05 (25 x €6 = €150 excl. VAT). Reply in Dutch.",
+      "pred": {
+        "action": "handoff",
+        "language": "nl",
+        "category": "billing",
+        "priority": "P4",
+        "overrides": [
+          "verify_failed"
+        ],
+        "sample_actions": [
+          "reply",
+          "reply",
+          "reply"
+        ],
+        "reply_en": "Hi! Plus costs €6 per active employee per month. For 25 active employees, that is €150 per month, excluding VAT. Roosterly Team",
+        "reason": "The customer asks for the Plus plan price, which is answered by the pricing FAQ. This is a routine information request with no urgency. [guardrail: verify_failed]",
+        "cost": 0.0004980500000000001
+      },
+      "correct": {
+        "action": false,
+        "language": true,
+        "category": true,
+        "priority": true
+      }
+    },
+    {
+      "run": 2,
+      "id": "E08",
+      "label": {
+        "action": "close",
+        "language": "nl",
+        "category": "other",
+        "priority": "P4"
+      },
+      "label_reason": "Spam (crypto offer): close it.",
+      "pred": {
+        "action": "close",
+        "language": "nl",
+        "category": "other",
+        "priority": "P4",
+        "overrides": [],
+        "sample_actions": [
+          "close",
+          "close",
+          "close"
+        ],
+        "reply_en": null,
+        "reason": "This is unsolicited investment promotion, not a support request. Spam can be closed.",
+        "cost": 0.00021542
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": true
+      }
+    },
+    {
+      "run": 2,
+      "id": "E09",
+      "label": {
+        "action": "handoff",
+        "language": "nl",
+        "category": "other",
+        "priority": "P2"
+      },
+      "label_reason": "GDPR access request ('inzageverzoek', AVG = Dutch GDPR): always a human.",
+      "pred": {
+        "action": "handoff",
+        "language": "nl",
+        "category": "other",
+        "priority": "P2",
+        "overrides": [],
+        "sample_actions": [
+          "handoff",
+          "handoff",
+          "handoff"
+        ],
+        "reply_en": null,
+        "reason": "The customer requests access to personal data under the AVG, which is a personal-data request that must be handled by a human. This involves a formal data request, so it is priority P2.",
+        "cost": 0.00027545
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": true
+      }
+    },
+    {
+      "run": 2,
+      "id": "E10",
+      "label": {
+        "action": "reply",
+        "language": "nl",
+        "category": "question",
+        "priority": "P4"
+      },
+      "label_reason": "Asks about planned maintenance tonight. Point to the status page (F11), in Dutch.",
+      "pred": {
+        "action": "reply",
+        "language": "nl",
+        "category": "question",
+        "priority": "P4",
+        "overrides": [],
+        "sample_actions": [
+          "reply",
+          "reply",
+          "reply"
+        ],
+        "reply_en": "Hi! You can check current outages and planned maintenance at status.roosterly.nl.\n\nCheers,\nTeam Roosterly",
+        "reason": "The customer asks whether maintenance is planned tonight. F11 directs customers to the status page for planned maintenance, which answers where to check.",
+        "cost": 0.00041519
+      },
+      "correct": {
+        "action": true,
+        "language": true,
+        "category": true,
+        "priority": true
+      }
+    }
+  ]
+}
