@@ -73,6 +73,13 @@
   input, textarea, select { width: 100%; font: inherit; padding: 8px 10px; border-radius: 0; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
   input:focus, textarea:focus, select:focus { outline: 2px solid var(--ring); outline-offset: -1px; }
   textarea { min-height: 120px; }
+  :root { color-scheme: light dark; }
+  select { appearance: none; -webkit-appearance: none; cursor: pointer; padding-right: 32px; height: 38px; }
+  .sel { position: relative; }
+  .sel::after { content: ""; position: absolute; right: 12px; top: 50%; width: 6px; height: 6px; margin-top: -5px;
+    border-right: 1.5px solid var(--muted-foreground); border-bottom: 1.5px solid var(--muted-foreground);
+    transform: rotate(45deg); pointer-events: none; }
+  select option { background: var(--panel); color: var(--text); }
   label { display: block; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted-foreground); margin: 10px 0 4px; }
   .label-cmp td:last-child { font-weight: 600; }
   .ok { color: var(--reply); } .miss { color: var(--warn); }
@@ -174,7 +181,7 @@ function showCustom() {
     run({ subject: subject.value, body: body.value, customer_plan: plan.value, channel: channel.value }, false, out, [btn]) } }, "Decide (dry run)");
   document.getElementById("detail").replaceChildren(
     card("New ticket", $("label", {}, "Subject"), subject, $("label", {}, "Body"), body,
-      $("div", { cls: "grid2" }, $("div", {}, $("label", {}, "Plan"), plan), $("div", {}, $("label", {}, "Channel"), channel)), btn), out);
+      $("div", { cls: "grid2" }, $("div", {}, $("label", {}, "Plan"), $("div", { cls: "sel" }, plan)), $("div", {}, $("label", {}, "Channel"), $("div", { cls: "sel" }, channel))), btn), out);
 }
 
 async function run(ticket, post, out, buttons) {
