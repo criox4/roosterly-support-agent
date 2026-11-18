@@ -5,6 +5,7 @@ Runs the same LangGraph pipeline as agent.py. "Decide" is a dry run (nothing pos
 "Decide & post" goes through the same checkpointed, re-check-before-post path as agent.py.
 Standard library only; binds to localhost.
 """
+import functools
 import inspect
 import json
 import sqlite3
@@ -16,6 +17,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from langgraph.checkpoint.sqlite import SqliteSaver
+from pydantic import BaseModel, Field
 
 import agent
 import graph
@@ -103,6 +105,21 @@ def code(name):
     obj = CODE[name]
     lines, line = inspect.getsourcelines(obj)
     return {"name": name, "file": Path(inspect.getsourcefile(obj)).name, "line": line, "source": "".join(lines)}
+
+
+class Translation(BaseModel):
+    subject_en: str = Field(description="The subject in English")
+    body_en: str = Field(description="The body in English, faithful, same line breaks")
+
+
+@functools.lru_cache(maxsize=256)
+def translate(tid, subject, body):
+    """English version of a ticket, for the UI only: the agent itself never uses this."""
+    msgs = [("system", "Translate the customer's support ticket into English, faithfully. If it is already English, "
+                       "return it unchanged. " + graph.UNTRUSTED),
+            ("user", graph.ticket_block({"id": tid, "subject": subject, "body": body}))]
+    r = graph.structured(Translation).invoke(msgs)
+    return {**r["parsed"].model_dump(), "cost": graph._cost(r["raw"])}
 
 
 def run_tests():
@@ -194,6 +211,12 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"running": True, "mode": mode, "lines": [], "exit": None}) if start_run(mode) else self._json({"error": "a run is already in progress"}, 409)
             if self.path == "/api/post" and RUN["running"]:
                 return self._json({"error": "a run-all is in progress"}, 409)
+            if self.path == "/api/translate":
+                t = next((x for x in HD.all_tickets() if x["id"] == body.get("id")), None)
+                if not t:
+                    return self._json({"error": "unknown ticket"}, 404)
+                t = redact_ticket(t)
+                return self._json(translate(t["id"], t.get("subject") or "", t.get("body") or ""))
             if self.path == "/api/tests":
                 return self._json(run_tests())
             if self.path == "/api/redact":  # safety playground: what the deterministic layer does to some text

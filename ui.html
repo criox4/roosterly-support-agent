@@ -32,6 +32,7 @@
     }
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html, body { height: 100%; }
   body { margin: 0; font: 15px/1.65 var(--font-serif); background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
   h1, h2, h3, .kicker, .badge, .chip, button, label, th, .stat, nav, .node, .tile b, .bar-row, .tabs { font-family: var(--font-heading); }
@@ -149,7 +150,18 @@
   dialog::backdrop { background: oklch(0 0 0 / 55%); }
   dialog .dhead { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); }
   dialog .dbody { padding: 18px 20px; }
-  dialog .dbody .card { margin-bottom: 12px; }
+  dialog { width: min(980px, calc(100vw - 32px)); }
+  .msec { padding: 18px 0; border-bottom: 1px solid var(--line); }
+  .msec:first-child { padding-top: 0; } .msec:last-child { border-bottom: 0; padding-bottom: 0; }
+  .pane { border: 1px solid var(--line); background: var(--bg); padding: 14px 16px; border-radius: calc(var(--radius) * .6); }
+  .plabel { font-family: var(--font-heading); font-size: 10.5px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--muted-foreground); margin-bottom: 8px; }
+  .kvgrid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); border: 1px solid var(--line); }
+  .kv { padding: 10px 12px; border-right: 1px solid var(--line); }
+  .kv:last-child { border-right: 0; }
+  .kv span { display: block; font-family: var(--font-heading); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted-foreground); }
+  .kv b { font-family: var(--font-heading); font-size: 15px; }
+  @media (max-width: 760px) { .kvgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .kv { border-bottom: 1px solid var(--line); } }
+  table.how td:first-child { width: 160px; color: var(--muted-foreground); font-family: var(--font-heading); font-size: 12px; letter-spacing: .04em; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 </head>
@@ -638,34 +650,71 @@ function chRun() {
 // one logged decision, in full (all text inserted as text nodes)
 function outcomeModal(t) {
   const d = $("dialog");
-  const close = () => { d.close(); d.remove(); };
+  const close = () => d.close();
   d.addEventListener("click", e => { if (e.target === d) close(); });  // click on the backdrop
   d.addEventListener("close", () => d.remove());
-  const chips = [t.language && `language ${t.language}`, t.category && `category ${t.category}`, t.priority && `priority ${t.priority}`,
-    t.confidence != null && `confidence ${t.confidence}`, t.faq && t.faq.length && `FAQ ${t.faq.join(", ")}`,
-    t.cost_usd != null && `$${t.cost_usd.toFixed(5)}`, t.secs != null && `${t.secs}s`, t.resumed && "resumed from checkpoint"].filter(Boolean);
-  d.append($("div", { cls: "dhead" }, $("div", { cls: "row" }, $("b", {}, t.ticket), t.action ? badge(t.action) : null, $("span", { cls: "chip" }, t.outcome)),
+  const section = (title, ...kids) => $("section", { cls: "msec" }, $("div", { cls: "kicker", style: "margin-bottom:10px" }, title), ...kids);
+  const kv = (k, v) => $("div", { cls: "kv" }, $("span", {}, k), $("b", {}, v ?? "–"));
+  const when = iso => { try { return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }); } catch { return iso; } };
+
+  const head = $("div", { cls: "row", style: "min-width:0" }, $("b", { style: "font-size:18px;font-family:var(--font-heading)" }, t.ticket),
+    t.action ? badge(t.action) : null, $("span", { cls: `chip ${t.outcome === "error" ? "warn" : ""}` }, t.outcome));
+  const subject = $("span", { cls: "muted", style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap" });
+
+  // 1. the ticket, original and English
+  const ticketBox = $("div");
+  later(ticketBox, get("/api/tickets"), all => {
+    const tk = all.find(x => x.id === t.ticket);
+    if (!tk) return $("p", { cls: "muted" }, "Ticket not found in the helpdesk.");
+    subject.textContent = tk.subject || "";
+    const en = $("div");
+    const isEn = t.language === "en";
+    if (!isEn) later(en, api("/api/translate", { id: tk.id }), tr => [
+      $("div", { style: "font-weight:600;margin-bottom:6px" }, tr.subject_en || "(no subject)"), $("div", { cls: "body" }, tr.body_en || "(empty body)")]);
+    return [
+      $("div", { cls: "row", style: "margin-bottom:12px" }, [`${tk.channel}`, `plan ${tk.customer_plan}`, `received ${when(tk.received_at)}`,
+        `helpdesk: ${tk.handled ? `handled · ${handledAction(tk.handled)}` : "open"}`].map(c => $("span", { cls: "chip" }, c))),
+      $("div", { cls: isEn ? "" : "grid2" },
+        $("div", { cls: "pane" }, $("div", { cls: "plabel" }, `Customer wrote${t.language ? ` (${t.language})` : ""}`),
+          $("div", { style: "font-weight:600;margin-bottom:6px" }, tk.subject || "(no subject)"), $("div", { cls: "body" }, tk.body || "(empty body)")),
+        isEn ? null : $("div", { cls: "pane" }, $("div", { cls: "plabel" }, "English translation"), en,
+          $("div", { cls: "muted", style: "font-size:12px;margin-top:10px" }, "For reading only. The agent works on the original text."))),
+      $("p", { cls: "muted", style: "font-size:12px;margin:8px 0 0" }, "Payment details are redacted before the agent sees the ticket.")];
+  });
+
+  // 2. the decision
+  const decision = t.error ? $("div", { cls: "callout bad", style: "margin:0" }, $("b", {}, "Error: "), t.error, " Nothing was posted; the ticket stays open for the next run.")
+    : [$("div", { cls: "kvgrid" }, kv("Action", t.action), kv("Language", t.language), kv("Category", t.category), kv("Priority", t.priority),
+        kv("Confidence", t.confidence), kv("FAQ cited", t.faq && t.faq.length ? t.faq.join(", ") : "none")),
+       t.reason ? $("p", { style: "margin:14px 0 0" }, t.reason) : null];
+
+  // 3. what the customer or the support team got
+  let sent = null;
+  if (t.reply) sent = section("Reply sent to the customer", $("div", { cls: "grid2" },
+    $("div", { cls: "pane" }, $("div", { cls: "plabel" }, `Reply (${t.language})`), $("div", { cls: "body" }, t.reply)),
+    $("div", { cls: "pane" }, $("div", { cls: "plabel" }, "Checker's English back-translation"), $("div", { cls: "body" }, t.reply_en || "–"))));
+  else if (t.handoff_note) sent = section("Handoff note for the support team", $("div", { cls: "pane" }, $("div", { cls: "body" }, t.handoff_note)));
+  else if (t.action === "close") sent = section("Closed", $("p", { cls: "muted" }, "Spam or empty: nothing is sent to the customer."));
+
+  // 4. how it was decided
+  const samples = t.sample_actions || [];
+  const howRows = t.error ? [] : [
+    ["Triage samples", samples.length ? $("div", { cls: "row" }, samples.map(badge),
+      $("span", { cls: "muted" }, new Set(samples).size === 1 ? "unanimous" : "disagree → handoff")) : "none: decided by a code rule"],
+    ["Guardrails", t.overrides && t.overrides.length ? $("div", { cls: "row" }, t.overrides.map(o => $("span", { cls: "chip warn mono" }, o)))
+      : $("span", { cls: "muted" }, "none fired: the model's decision stood")],
+    ["Checkpoint", t.resumed ? "resumed after an interrupted earlier run" : "fresh run"],
+    ["Cost and time", `$${(t.cost_usd || 0).toFixed(5)} · ${t.secs}s`]];
+  howRows.push(["Run", $("span", { cls: "mono" }, `${t.run} · ${when(t.ts)}`)]);
+
+  d.append(
+    $("div", { cls: "dhead" }, $("div", { style: "display:flex;flex-direction:column;gap:4px;min-width:0" }, head, subject),
       $("button", { cls: "small", on: { click: close } }, "Close")),
     $("div", { cls: "dbody" },
-      later($("div"), get("/api/tickets"), all => {
-        const tk = all.find(x => x.id === t.ticket);
-        if (!tk) return $("p", { cls: "muted" }, "Ticket not found in the helpdesk.");
-        return card("Ticket (as the agent saw it, payment details redacted)",
-          $("div", { cls: "row", style: "margin-bottom:10px" }, [`channel ${tk.channel}`, `plan ${tk.customer_plan}`, `received ${tk.received_at}`,
-            `helpdesk: ${tk.handled ? `handled (${handledAction(tk.handled)})` : "open"}`].map(c => $("span", { cls: "chip" }, c))),
-          $("div", { style: "font-weight:600;margin-bottom:6px" }, tk.subject || "(no subject)"),
-          $("div", { cls: "body" }, tk.body || "(empty body)"));
-      }),
-      t.error ? card("Error", $("p", { cls: "warn" }, t.error), $("p", { cls: "muted" }, "Nothing was posted; the ticket stays open for the next run.")) : null,
-      chips.length ? $("div", { cls: "row", style: "margin-bottom:12px" }, chips.map(c => $("span", { cls: "chip" }, c))) : null,
-      t.reason ? card("Reason", $("p", {}, t.reason)) : null,
-      t.reply ? $("div", { cls: "grid2", style: "margin-bottom:12px" }, card(`Reply sent (${t.language})`, $("div", { cls: "body" }, t.reply)),
-        card("English back-translation", $("div", { cls: "body" }, t.reply_en || "–"))) : null,
-      t.handoff_note ? card("Handoff note for the support team", $("div", { cls: "body" }, t.handoff_note)) : null,
-      card("How it was decided", $("table", {},
-        $("tr", {}, $("td", {}, "triage samples"), $("td", {}, (t.sample_actions || []).join(" / ") || "none (decided by code)")),
-        $("tr", {}, $("td", {}, "guardrails"), $("td", { cls: "mono" }, (t.overrides || []).join(", ") || "none fired")),
-        $("tr", {}, $("td", {}, "run"), $("td", { cls: "mono" }, `${t.run} · ${t.ts}`))))));
+      section("Customer ticket", ticketBox),
+      section("Decision", decision),
+      sent,
+      section("How it was decided", $("table", { cls: "how" }, howRows.map(([k, v]) => $("tr", {}, $("td", {}, k), $("td", {}, v)))))));
   document.body.append(d);
   d.showModal();
 }
